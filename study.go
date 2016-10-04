@@ -245,7 +245,7 @@ func eventPopulate(c chan *EventCon) {
 						idUsers[rand.Intn(len(idUsers))],
 						idClassRooms[rand.Intn(len(idClassRooms))],
 						[]string{}},
-					nil}
+					make(chan error)}
 				c <- comm
 				fmt.Printf("error comm:%v", <-comm.Error)
 				loop -= 1
