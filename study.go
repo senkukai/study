@@ -50,6 +50,10 @@ type Context struct {
 	Student   Student
 	ClassRoom map[string]ClassRoom
 }
+type EventCon struct {
+	Event Event
+	Error chan error
+}
 
 var eventsFile = "data/events.log"
 var students = map[string]Student{
@@ -154,17 +158,13 @@ func (e Event) log() {
 func (e Event) String() string {
 	return fmt.Sprintf("%v_%v_%v_%v_%v_%v\n", e.Type, e.Date, e.Day, e.Student, e.ClassRoom, e.Group)
 }
-func eventProcessor(c chan Event) error {
+func eventProcessor(c chan *EventCon) {
 	for {
 		e := <-c
-		events = append(events, e)
-		e.log()
-		err := e.book()
-		if err != nil {
-			return err
-		} else {
-			return nil
-		}
+		events = append(events, e.Event)
+		e.Event.log()
+		e.Error <- e.Event.book()
+		fmt.Printf("Processed: %v\n", e.Event)
 	}
 }
 func resetEvents() {
@@ -222,7 +222,7 @@ func loadEvents() {
 	}
 }
 
-func eventPopulate(c chan Event) {
+func eventPopulate(c chan *EventCon) {
 	days := []string{"Lundi", "Mardi", "Mercredi", "Jeudi"}
 	idUsers := []string{}
 	for i := range students {
@@ -233,17 +233,21 @@ func eventPopulate(c chan Event) {
 		idClassRooms = append(idClassRooms, i)
 	}
 	rand.Seed(10)
-	routine := 100
+	routine := 10
 	for routine > 0 {
-		go func(c chan Event, loop int, days []string, idUsers []string, idClassRooms []string) {
+		go func(c chan *EventCon, loop int, days []string, idUsers []string, idClassRooms []string) {
 			for loop > 0 {
-				c <- Event{
-					"book",
-					time.Now(),
-					days[rand.Intn(len(days))],
-					idUsers[rand.Intn(len(idUsers))],
-					idClassRooms[rand.Intn(len(idClassRooms))],
-					[]string{}}
+				comm := &EventCon{
+					Event{
+						"book",
+						time.Now(),
+						days[rand.Intn(len(days))],
+						idUsers[rand.Intn(len(idUsers))],
+						idClassRooms[rand.Intn(len(idClassRooms))],
+						[]string{}},
+					nil}
+				c <- comm
+				fmt.Printf("error comm:%v", <-comm.Error)
 				loop -= 1
 			}
 		}(c, 100, days, idUsers, idClassRooms)
@@ -252,15 +256,15 @@ func eventPopulate(c chan Event) {
 }
 
 func main() {
-	//resetEvents()
-	loadEvents()
+	resetEvents()
+	//loadEvents()
 
-	c := make(chan Event)
+	c := make(chan *EventCon)
 	go eventProcessor(c)
 
-	//eventPopulate(c)
+	eventPopulate(c)
 
-	//time.Sleep(1 * time.Second)
+	time.Sleep(1 * time.Second)
 	fmt.Printf("len events:%v\n", len(events))
 	for _, v := range bookings {
 		fmt.Println(v)
