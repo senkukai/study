@@ -1,0 +1,38 @@
+{{$student := .Student}}
+{{$idxclassrooms := .IdxClassRooms}}
+{{$classrooms := .ClassRooms}}
+{{$remainseats := .RemainSeats}}
+{{$occupancy := .Occupancy}}
+{{$errors := .Errors}}
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>{{$student.FirstName}} {{$student.Name}}</title>
+    </head>
+    <body>
+		{{range $i, $error := $errors}}
+		!{{$error}}<br>
+		{{end}}
+        <h4> >>{{$student.FirstName}} {{$student.Name}}</h4>
+        <form action="submit" method="POST">
+			{{range $i, $day := .IdxDays}} 
+			<h3>{{$day}}</h3>
+				{{range $j, $idcr := $idxclassrooms}}
+					{{$occ := index $occupancy $i}}
+					{{$rem := index $remainseats $i $j}}
+					{{$cr := index $classrooms $idcr}}
+					{{if eq $student.Gender $cr.Gender}}
+					<input type="radio" name="{{$day}}" value={{$idcr}} {{if eq $occ $idcr}} checked {{end}}> {{$cr.Name}} ({{$rem}})&emsp;
+					{{else if eq $cr.Gender ""}}
+					<input type="radio" name="{{$day}}" value={{$idcr}} {{if eq $occ $idcr}} checked {{end}}> {{$cr.Name}} ({{$rem}})&emsp;
+					{{end}}
+				{{end}}
+				<br>
+			{{end}}
+
+
+            <br><br>
+            <input type="submit" value="Submit">
+        </form>
+    </body>
+</html>
