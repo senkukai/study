@@ -54,53 +54,76 @@ type EventCon struct {
 	Event Event
 	Error chan error
 }
+type TmplCon struct {
+	Student       Student
+	IdxDays       *[]string
+	IdxClassRooms *[]string
+	ClassRooms    *map[string]ClassRoom
+	RemainSeats   *[4][5]int
+	Occupancy     *[4]string
+	Errors        []error
+}
 
 var eventsFile = "data/events.log"
 var students = map[string]Student{
 	"albert.jean":  Student{"albert.jean", "Jean", "Albert", "G", "jeanjean"},
-	"alice.cooper": Student{"alice.cooper", "Cooper", "Alice", "G", "caglisse"}}
+	"alice.cooper": Student{"alice.cooper", "Cooper", "Alice", "F", "caglisse"}}
 var classRooms = map[string]ClassRoom{
 	"210": ClassRoom{"210", "Etude individuelle Filles", 35, "F"},
 	"216": ClassRoom{"216", "Etude individuelle Garcons", 35, "G"},
-	"219": ClassRoom{"219", "Etude en groupe 1", 35, ""},
-	"207": ClassRoom{"207", "Etude en groupe 2", 35, ""},
-	"CDI": ClassRoom{"CDI", "CDI", 0, ""}}
+	"219": ClassRoom{"219", "Etude en groupe 1", 1, ""},
+	"207": ClassRoom{"207", "Etude en groupe 2", 1, ""},
+	"CDI": ClassRoom{"CDI", "CDI", 1, ""}}
+var idxDays = []string{"Lundi", "Mardi", "Mercredi", "Jeudi"}
+var idxClassRooms = []string{"210", "216", "219", "207", "CDI"}
+var RemainSeats = [4][5]int{
+	[5]int{},
+	[5]int{},
+	[5]int{},
+	[5]int{}}
+var Occupancy [4]string
 var events = []Event{}
 var bookings = []Booking{}
 
+var c = make(chan *EventCon)
+
 var tmplDir = "tmpl/"
 
-func rootHandler(w http.ResponseWriter, r *http.Request, c *Context) {
+func rootHandler(w http.ResponseWriter, r *http.Request, c *TmplCon) {
 	renderTemplate(w, "view", c)
 }
-func submitHandler(w http.ResponseWriter, r *http.Request, c *Context) {
+func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 	r.ParseForm()
 	fmt.Print(r.Form)
-	events = append(
-		events,
-		Event{
-			"book",
-			time.Now(),
-			"Lundi",
-			c.Student.User,
-			r.Form["Lundi"][0],
-			[]string{}})
-	events = append(events, Event{"book", time.Now(), "Mardi", c.Student.User, r.Form["Mardi"][0], []string{}})
-	events = append(events, Event{"book", time.Now(), "Mercredi", c.Student.User, r.Form["Mercredi"][0], []string{}})
-	events = append(events, Event{"book", time.Now(), "Jeudi", c.Student.User, r.Form["Jeudi"][0], []string{}})
+	for _, d := range idxDays {
+		comm := &EventCon{
+			Event{
+				"book",
+				time.Now(),
+				d,
+				con.Student.User,
+				r.Form[d][0],
+				[]string{}},
+			make(chan error)}
+		c <- comm
+		error := <-comm.Error
+		if error != nil {
+			con.Errors = append(con.Errors, error)
+		}
+	}
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 var templates = template.Must(template.ParseFiles(tmplDir + "view.html"))
 
-func renderTemplate(w http.ResponseWriter, tmpl string, c *Context) {
+func renderTemplate(w http.ResponseWriter, tmpl string, c *TmplCon) {
 	err := templates.ExecuteTemplate(w, tmpl+".html", c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
 
-func makeHandler(fn func(http.ResponseWriter, *http.Request, *Context)) http.HandlerFunc {
+func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
 
@@ -113,18 +136,31 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *Context)) http.Han
 
 		fmt.Print(student)
 		fmt.Print("\n")
-		c := &Context{student, classRooms}
-		fn(w, r, c)
+		remainUpdate()
+		updateOccupancy(student.User)
+		//c := &Context{student, classRooms}
+		con := &TmplCon{student, &idxDays, &idxClassRooms, &classRooms, &RemainSeats, &Occupancy, []error{}}
+		fn(w, r, con)
 	}
 }
-
-func remaining(s string, j string) int {
-	rem := classRooms[s].Cap
+func updateOccupancy(s string) {
+	for _, b := range bookings {
+		if b.Student == s {
+			for j, d := range idxDays {
+				if d == b.Day {
+					Occupancy[j] = b.ClassRoom
+				}
+			}
+		}
+	}
+}
+func remaining(cr string, d string) int {
+	rem := classRooms[cr].Cap
 	if len(bookings) == 0 {
 		return rem
 	}
 	for _, b := range bookings {
-		if b.ClassRoom == s && b.Day == j {
+		if b.ClassRoom == cr && b.Day == d {
 			rem -= 1
 		}
 	}
@@ -158,13 +194,11 @@ func (e Event) log() {
 func (e Event) String() string {
 	return fmt.Sprintf("%v_%v_%v_%v_%v_%v\n", e.Type, e.Date, e.Day, e.Student, e.ClassRoom, e.Group)
 }
-func eventProcessor(c chan *EventCon) {
-	for {
-		e := <-c
+func eventProcessor() {
+	for e := range c {
 		events = append(events, e.Event)
 		e.Event.log()
 		e.Error <- e.Event.book()
-		fmt.Printf("Processed: %v\n", e.Event)
 	}
 }
 func resetEvents() {
@@ -233,7 +267,7 @@ func eventPopulate(c chan *EventCon) {
 		idClassRooms = append(idClassRooms, i)
 	}
 	rand.Seed(10)
-	routine := 10
+	routine := 10000
 	for routine > 0 {
 		go func(c chan *EventCon, loop int, days []string, idUsers []string, idClassRooms []string) {
 			for loop > 0 {
@@ -245,31 +279,43 @@ func eventPopulate(c chan *EventCon) {
 						idUsers[rand.Intn(len(idUsers))],
 						idClassRooms[rand.Intn(len(idClassRooms))],
 						[]string{}},
-					nil}
+					make(chan error)}
 				c <- comm
-				fmt.Printf("error comm:%v", <-comm.Error)
+				//fmt.Printf("---\nevent:%verror:%v\n---\n", comm.Event, <-comm.Error)
+				if <-comm.Error == nil {
+				}
 				loop -= 1
 			}
 		}(c, 100, days, idUsers, idClassRooms)
 		routine -= 1
 	}
 }
+func remainUpdate() {
+	for i, d := range idxDays {
+		for j, cr := range idxClassRooms {
+			r := remaining(cr, d)
+			RemainSeats[i][j] = r
+		}
+	}
+}
 
 func main() {
-	resetEvents()
-	//loadEvents()
+	//resetEvents()
+	loadEvents()
 
-	c := make(chan *EventCon)
-	go eventProcessor(c)
+	//c := make(chan *EventCon)
+	go eventProcessor()
 
-	eventPopulate(c)
+	//eventPopulate(c)
 
-	time.Sleep(1 * time.Second)
+	//time.Sleep(1 * time.Second)
 	fmt.Printf("len events:%v\n", len(events))
 	for _, v := range bookings {
 		fmt.Println(v)
 	}
-	//http.HandleFunc("/submit", makeHandler(submitHandler))
-	//http.HandleFunc("/", makeHandler(rootHandler))
+
+	http.HandleFunc("/submit", makeHandler(submitHandler))
+	http.HandleFunc("/", makeHandler(rootHandler))
+	http.ListenAndServe(":8080", nil)
 	//http.ListenAndServeTLS(":8080", "cert.pem", "key.pem", nil)
 }
