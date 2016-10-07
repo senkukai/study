@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"html/template"
 	"io"
 	"math/rand"
@@ -89,32 +90,59 @@ var c = make(chan *EventCon)
 
 var tmplDir = "tmpl/"
 
-func rootHandler(w http.ResponseWriter, r *http.Request, c *TmplCon) {
-	renderTemplate(w, "view", c)
+func rootHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
+	renderTemplate(w, "view", con)
+}
+func hash(s string) string {
+	h := fnv.New32a()
+	h.Write([]byte("study/" + s))
+	return fmt.Sprint(h.Sum32())
+}
+
+func loginHandler(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	if len(r.Form) == 0 {
+		cookie := http.Cookie{Name: "session", Value: "deleted", HttpOnly: false, Path: "/"}
+		http.SetCookie(w, &cookie)
+		renderTemplate(w, "login", nil)
+		return
+	}
+	user := r.Form["user"][0]
+	pass := r.Form["password"][0]
+	if students[user].Password == pass {
+		cookie := http.Cookie{Name: "session", Value: user + "/" + hash(user), HttpOnly: false, Path: "/"}
+		http.SetCookie(w, &cookie)
+	}
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 	r.ParseForm()
 	fmt.Print(r.Form)
-	for _, d := range idxDays {
-		comm := &EventCon{
-			Event{
-				"book",
-				time.Now(),
-				d,
-				con.Student.User,
-				r.Form[d][0],
-				[]string{}},
-			make(chan error)}
-		c <- comm
-		error := <-comm.Error
-		if error != nil {
-			con.Errors = append(con.Errors, error)
+	for i, d := range idxDays {
+		// only create an event if student has changed classroom
+		if con.Occupancy[i] != r.Form[d][0] {
+			comm := &EventCon{
+				Event{
+					"book",
+					time.Now(),
+					d,
+					con.Student.User,
+					r.Form[d][0],
+					[]string{}},
+				make(chan error)}
+			c <- comm
+			error := <-comm.Error
+			if error != nil {
+				con.Errors = append(con.Errors, error)
+			}
 		}
 	}
-	http.Redirect(w, r, "/", http.StatusFound)
+	remainUpdate()
+	updateOccupancy(con.Student.User)
+	renderTemplate(w, "view", con)
 }
 
-var templates = template.Must(template.ParseFiles(tmplDir + "view.html"))
+var templates = template.Must(template.ParseFiles(tmplDir+"view.html", tmplDir+"login.html"))
 
 func renderTemplate(w http.ResponseWriter, tmpl string, c *TmplCon) {
 	err := templates.ExecuteTemplate(w, tmpl+".html", c)
@@ -125,20 +153,22 @@ func renderTemplate(w http.ResponseWriter, tmpl string, c *TmplCon) {
 
 func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-
-		user, pass, _ := r.BasicAuth()
-		student, ok := students[user]
-		if !ok || student.Password != pass {
-			http.Error(w, "Unauthorized.", 401)
+		fmt.Println(r.Header)
+		cookie, err := r.Cookie("session")
+		if err != nil {
+			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
+		userhash := strings.Split(cookie.Value, "/")
+		if len(userhash) == 1 || userhash[1] != hash(userhash[0]) {
+			http.Redirect(w, r, "/login", http.StatusFound)
+		}
 
-		fmt.Print(student)
-		fmt.Print("\n")
+		fmt.Printf("cookie:%v\n", cookie)
+
+		student, _ := students[userhash[0]]
 		remainUpdate()
 		updateOccupancy(student.User)
-		//c := &Context{student, classRooms}
 		con := &TmplCon{student, &idxDays, &idxClassRooms, &classRooms, &RemainSeats, &Occupancy, []error{}}
 		fn(w, r, con)
 	}
@@ -180,7 +210,7 @@ func (e Event) book() error {
 		}
 		return nil
 	} else {
-		return errors.New("Il n'y a plus de places dans la salle suivante : " + e.ClassRoom)
+		return errors.New("Il n'y a plus de places " + e.Day + " dans la salle suivante : " + e.ClassRoom)
 	}
 }
 func (e Event) log() {
@@ -281,7 +311,6 @@ func eventPopulate(c chan *EventCon) {
 						[]string{}},
 					make(chan error)}
 				c <- comm
-				//fmt.Printf("---\nevent:%verror:%v\n---\n", comm.Event, <-comm.Error)
 				if <-comm.Error == nil {
 				}
 				loop -= 1
@@ -314,6 +343,7 @@ func main() {
 		fmt.Println(v)
 	}
 
+	http.HandleFunc("/login/", loginHandler)
 	http.HandleFunc("/submit", makeHandler(submitHandler))
 	http.HandleFunc("/", makeHandler(rootHandler))
 	http.ListenAndServe(":8080", nil)

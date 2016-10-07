@@ -13,7 +13,7 @@
 		{{range $i, $error := $errors}}
 		!{{$error}}<br>
 		{{end}}
-        <h4> >>{{$student.FirstName}} {{$student.Name}}</h4>
+		<h4> >>{{$student.FirstName}} {{$student.Name}} (<a href="/login">Se d&eacute;connecter</a>)</h4>
         <form action="submit" method="POST">
 			{{range $i, $day := .IdxDays}} 
 			<h3>{{$day}}</h3>
@@ -32,7 +32,7 @@
 
 
             <br><br>
-            <input type="submit" value="Submit">
+            <input type="submit" value="R&eacute;server">
         </form>
     </body>
 </html>
