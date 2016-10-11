@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 	"time"
 )
@@ -69,10 +70,10 @@ type TmplCon struct {
 
 var eventsFile = "data/events.log"
 var students = map[string]Student{
-	"albert.jean":    Student{"albert.jean", "Jean", "Albert", "G", ""},
-	"camille.plotte": Student{"camille.plotte", "Camille", "Plotte", "F", ""},
-	"chris.jambon":   Student{"chris.jambon", "Chris", "Jambon", "G", ""},
-	"alice.cooper":   Student{"alice.cooper", "Cooper", "Alice", "F", ""}}
+	"ingalls.albert": Student{"ingalls.albert", "Ingalls", "Albert", "G", ""},
+	"plotte.camille": Student{"plotte.camille", "Plotte", "Camille", "F", ""},
+	"jambon.chris":   Student{"jambon.chris", "Jambon", "Chris", "G", ""},
+	"cooper.alice":   Student{"cooper.alice", "Cooper", "Alice", "F", ""}}
 var classRooms = map[string]ClassRoom{
 	"210": ClassRoom{"210", "Etude individuelle Filles", 35, "F"},
 	"216": ClassRoom{"216", "Etude individuelle Garcons", 35, "G"},
@@ -105,6 +106,7 @@ func hash(s string) string {
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	if len(r.Form) == 0 {
+		fmt.Println("Form empty, delete cookie")
 		cookie := http.Cookie{Name: "session", Value: "deleted", HttpOnly: false, Path: "/"}
 		http.SetCookie(w, &cookie)
 		renderTemplate(w, "login", nil)
@@ -112,7 +114,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	user := r.Form["user"][0]
 	pass := r.Form["password"][0]
-	if students[user].Password == pass {
+	_, user_ok := students[user]
+	if students[user].Password == pass && user_ok {
 		cookie := http.Cookie{Name: "session", Value: user + "/" + hash(user), HttpOnly: false, Path: "/"}
 		http.SetCookie(w, &cookie)
 	}
@@ -142,6 +145,7 @@ func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 	}
 	remainUpdate()
 	con.Occupancy = occupancy(con.Student.User)
+	con.Group = groupList(con.Student.User)
 	renderTemplate(w, "view", con)
 }
 
@@ -164,24 +168,30 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 		userhash := strings.Split(cookie.Value, "/")
 		if len(userhash) == 1 || userhash[1] != hash(userhash[0]) {
 			http.Redirect(w, r, "/login", http.StatusFound)
+			return
 		}
-
-		fmt.Printf("cookie:%v\n", cookie)
 
 		student, _ := students[userhash[0]]
 		remainUpdate()
-		fmt.Printf("len events:%v\n", len(events))
-		for _, v := range bookings {
-			fmt.Println(v)
-		}
-		con := &TmplCon{student, &idxDays, &idxClassRooms, &classRooms, &RemainSeats, occupancy(student.User), []error{}, studentList(), groupList(student.User)}
+		//fmt.Printf("len events:%v\n", len(events))
+		//for _, v := range bookings {
+		//	fmt.Println(v)
+		//}
+		con := &TmplCon{student, &idxDays, &idxClassRooms, &classRooms, &RemainSeats, occupancy(student.User), []error{}, studentList(student.User), groupList(student.User)}
 		fn(w, r, con)
 	}
 }
-func studentList() [][]string {
+func studentList(student string) [][]string {
 	list := [][]string{}
+	index := []string{}
 	for _, s := range students {
-		list = append(list, []string{s.User, s.Name, s.FirstName})
+		index = append(index, s.User)
+	}
+	sort.Sort(sort.StringSlice(index))
+	for _, s := range index {
+		if s != student {
+			list = append(list, []string{students[s].User, students[s].Name, students[s].FirstName})
+		}
 	}
 	return list
 }
@@ -198,6 +208,7 @@ func groupList(s string) map[string][][]string {
 			}
 		}
 	}
+	fmt.Println(list)
 	return list
 }
 func roomByDay(s string, d string) string {
@@ -279,7 +290,7 @@ func resetEvents() {
 	for _, cr := range classRooms {
 		for i, s := range students {
 			if cr.Gender == s.Gender {
-				e := Event{"book", time.Now(), "Lundi", i, cr.Id, []string{"albert.jean", "nil", "nil", "nil"}}
+				e := Event{"book", time.Now(), "Lundi", i, cr.Id, []string{"nil", "nil", "nil", "nil"}}
 				e.log()
 				events = append(events, e)
 				e = Event{"book", time.Now(), "Mardi", i, cr.Id, []string{"nil", "nil", "nil", "nil"}}
@@ -380,10 +391,6 @@ func main() {
 	//eventPopulate(c)
 
 	//time.Sleep(1 * time.Second)
-	fmt.Printf("len events:%v\n", len(events))
-	for _, v := range bookings {
-		fmt.Println(v)
-	}
 
 	http.HandleFunc("/login/", loginHandler)
 	http.HandleFunc("/submit", makeHandler(submitHandler))
