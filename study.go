@@ -22,10 +22,10 @@ type Student struct {
 	Password  string
 }
 type Group struct {
-	Lun [5]*Student
-	Mar [5]*Student
-	Mer [5]*Student
-	Jeu [5]*Student
+	Lun [][]string
+	Mar [][]string
+	Mer [][]string
+	Jeu [][]string
 }
 type ClassRoom struct {
 	Id     string
@@ -61,14 +61,18 @@ type TmplCon struct {
 	IdxClassRooms *[]string
 	ClassRooms    *map[string]ClassRoom
 	RemainSeats   *[4][5]int
-	Occupancy     *[4]string
+	Occupancy     [4]string
 	Errors        []error
+	Students      [][]string
+	Group         map[string][][]string
 }
 
 var eventsFile = "data/events.log"
 var students = map[string]Student{
-	"albert.jean":  Student{"albert.jean", "Jean", "Albert", "G", "jeanjean"},
-	"alice.cooper": Student{"alice.cooper", "Cooper", "Alice", "F", "caglisse"}}
+	"albert.jean":    Student{"albert.jean", "Jean", "Albert", "G", ""},
+	"camille.plotte": Student{"camille.plotte", "Camille", "Plotte", "F", ""},
+	"chris.jambon":   Student{"chris.jambon", "Chris", "Jambon", "G", ""},
+	"alice.cooper":   Student{"alice.cooper", "Cooper", "Alice", "F", ""}}
 var classRooms = map[string]ClassRoom{
 	"210": ClassRoom{"210", "Etude individuelle Filles", 35, "F"},
 	"216": ClassRoom{"216", "Etude individuelle Garcons", 35, "G"},
@@ -82,7 +86,6 @@ var RemainSeats = [4][5]int{
 	[5]int{},
 	[5]int{},
 	[5]int{}}
-var Occupancy [4]string
 var events = []Event{}
 var bookings = []Booking{}
 
@@ -117,10 +120,10 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 }
 func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 	r.ParseForm()
-	fmt.Print(r.Form)
 	for i, d := range idxDays {
 		// only create an event if student has changed classroom
-		if con.Occupancy[i] != r.Form[d][0] {
+		occ := occupancy(con.Student.User)
+		if occ[i] != r.Form[d][0] {
 			comm := &EventCon{
 				Event{
 					"book",
@@ -128,7 +131,7 @@ func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 					d,
 					con.Student.User,
 					r.Form[d][0],
-					[]string{}},
+					[]string{r.Form[d+"_group1"][0], r.Form[d+"_group2"][0], r.Form[d+"_group3"][0], r.Form[d+"_group4"][0]}},
 				make(chan error)}
 			c <- comm
 			error := <-comm.Error
@@ -138,7 +141,7 @@ func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 		}
 	}
 	remainUpdate()
-	updateOccupancy(con.Student.User)
+	con.Occupancy = occupancy(con.Student.User)
 	renderTemplate(w, "view", con)
 }
 
@@ -153,7 +156,6 @@ func renderTemplate(w http.ResponseWriter, tmpl string, c *TmplCon) {
 
 func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println(r.Header)
 		cookie, err := r.Cookie("session")
 		if err != nil {
 			http.Redirect(w, r, "/login", http.StatusFound)
@@ -168,21 +170,56 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 
 		student, _ := students[userhash[0]]
 		remainUpdate()
-		updateOccupancy(student.User)
-		con := &TmplCon{student, &idxDays, &idxClassRooms, &classRooms, &RemainSeats, &Occupancy, []error{}}
+		fmt.Printf("len events:%v\n", len(events))
+		for _, v := range bookings {
+			fmt.Println(v)
+		}
+		con := &TmplCon{student, &idxDays, &idxClassRooms, &classRooms, &RemainSeats, occupancy(student.User), []error{}, studentList(), groupList(student.User)}
 		fn(w, r, con)
 	}
 }
-func updateOccupancy(s string) {
+func studentList() [][]string {
+	list := [][]string{}
+	for _, s := range students {
+		list = append(list, []string{s.User, s.Name, s.FirstName})
+	}
+	return list
+}
+func groupList(s string) map[string][][]string {
+	list := map[string][][]string{}
 	for _, b := range bookings {
 		if b.Student == s {
-			for j, d := range idxDays {
-				if d == b.Day {
-					Occupancy[j] = b.ClassRoom
+			for _, g := range b.Group {
+				if roomByDay(s, b.Day) == roomByDay(g, b.Day) {
+					list[b.Day] = append(list[b.Day], []string{g, "pr&eacute;sent"})
+				} else {
+					list[b.Day] = append(list[b.Day], []string{g, "absent"})
 				}
 			}
 		}
 	}
+	return list
+}
+func roomByDay(s string, d string) string {
+	for _, b := range bookings {
+		if b.Student == s && b.Day == d {
+			return b.ClassRoom
+		}
+	}
+	return ""
+}
+func occupancy(s string) [4]string {
+	occupancy := [4]string{}
+	for _, b := range bookings {
+		if b.Student == s {
+			for j, d := range idxDays {
+				if d == b.Day {
+					occupancy[j] = b.ClassRoom
+				}
+			}
+		}
+	}
+	return occupancy
 }
 func remaining(cr string, d string) int {
 	rem := classRooms[cr].Cap
@@ -202,11 +239,12 @@ func (e Event) book() error {
 		for i, b := range bookings {
 			if b.Student == e.Student && b.Day == e.Day {
 				bookings[i].ClassRoom = e.ClassRoom
+				bookings[i].Group = e.Group
 				exist = true
 			}
 		}
 		if !exist {
-			bookings = append(bookings, Booking{e.Day, e.Student, e.ClassRoom, []string{}})
+			bookings = append(bookings, Booking{e.Day, e.Student, e.ClassRoom, e.Group})
 		}
 		return nil
 	} else {
@@ -241,16 +279,16 @@ func resetEvents() {
 	for _, cr := range classRooms {
 		for i, s := range students {
 			if cr.Gender == s.Gender {
-				e := Event{"book", time.Now(), "Lundi", i, cr.Id, []string{}}
+				e := Event{"book", time.Now(), "Lundi", i, cr.Id, []string{"albert.jean", "nil", "nil", "nil"}}
 				e.log()
 				events = append(events, e)
-				e = Event{"book", time.Now(), "Mardi", i, cr.Id, []string{}}
+				e = Event{"book", time.Now(), "Mardi", i, cr.Id, []string{"nil", "nil", "nil", "nil"}}
 				e.log()
 				events = append(events, e)
-				e = Event{"book", time.Now(), "Mercredi", i, cr.Id, []string{}}
+				e = Event{"book", time.Now(), "Mercredi", i, cr.Id, []string{"nil", "nil", "nil", "nil"}}
 				e.log()
 				events = append(events, e)
-				e = Event{"book", time.Now(), "Jeudi", i, cr.Id, []string{}}
+				e = Event{"book", time.Now(), "Jeudi", i, cr.Id, []string{"nil", "nil", "nil", "nil"}}
 				e.log()
 				events = append(events, e)
 			}
@@ -273,14 +311,18 @@ func loadEvents() {
 			panic(err)
 		}
 		splitEvent := strings.Split(line, "_")
+		//convert string to time
 		time, _ := time.Parse("2006-01-02 15:04:00.000000000 +0200 CEST", splitEvent[1])
+		//when splitting, trim '[' and ']'
+		group := strings.Split(splitEvent[5][1:len(splitEvent[5])-2], " ")
+		fmt.Println(group)
 		e := Event{
 			splitEvent[0],
 			time,
 			splitEvent[2],
 			splitEvent[3],
 			splitEvent[4],
-			[]string{}}
+			group}
 		events = append(events, e)
 		e.book()
 	}
@@ -329,7 +371,7 @@ func remainUpdate() {
 }
 
 func main() {
-	//resetEvents()
+	resetEvents()
 	loadEvents()
 
 	//c := make(chan *EventCon)

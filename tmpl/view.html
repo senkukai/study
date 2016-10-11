@@ -1,9 +1,11 @@
 {{$student := .Student}}
+{{$students := .Students}}
 {{$idxclassrooms := .IdxClassRooms}}
 {{$classrooms := .ClassRooms}}
 {{$remainseats := .RemainSeats}}
 {{$occupancy := .Occupancy}}
 {{$errors := .Errors}}
+{{$group := .Group}}
 <!DOCTYPE html>
 <html>
     <head>
@@ -27,6 +29,68 @@
 					<input type="radio" name="{{$day}}" value={{$idcr}} {{if eq $occ $idcr}} checked {{end}}> {{$cr.Name}} ({{$rem}})&emsp;
 					{{end}}
 				{{end}}
+				<br>
+				Membres du groupe: 
+				<select name="{{$day}}_group1">
+					{{$g1 := index $group $day 0 0}}
+					{{if eq $g1 "nil"}}
+					<option value="nil" selected>1er membre</option>
+					{{else}}
+					<option value="nil">1er membre</option>
+					{{end}}
+				{{range $s := $students}}
+					{{if eq $g1 (index $s 0)}}
+					<option value={{index $s 0}} selected="selected">{{index $s 1}} {{index $s 2}}</option>
+					{{else}}
+					<option value={{index $s 0}}>{{index $s 1}} {{index $s 2}}</option>
+					{{end}}
+				{{end}}
+				</select>
+				<select name="{{$day}}_group2">
+					{{$g1 := index $group $day 1 0}}
+					{{if eq $g1 "nil"}}
+					<option value="nil" selected>2eme membre</option>
+					{{else}}
+					<option value="nil">2eme membre</option>
+					{{end}}
+				{{range $s := $students}}
+					{{if eq $g1 (index $s 0)}}
+					<option value={{index $s 0}} selected>{{index $s 1}} {{index $s 2}}</option>
+					{{else}}
+					<option value={{index $s 0}}>{{index $s 1}} {{index $s 2}}</option>
+					{{end}}
+				{{end}}
+				</select>
+				<select name="{{$day}}_group3">
+					{{$g1 := index $group $day 2 0}}
+					{{if eq $g1 "nil"}}
+					<option value="nil" selected>3eme membre</option>
+					{{else}}
+					<option value="nil">3eme membre</option>
+					{{end}}
+				{{range $s := $students}}
+					{{if eq $g1 (index $s 0)}}
+					<option value={{index $s 0}} selected>{{index $s 1}} {{index $s 2}}</option>
+					{{else}}
+					<option value={{index $s 0}}>{{index $s 1}} {{index $s 2}}</option>
+					{{end}}
+				{{end}}
+				</select>
+				<select name="{{$day}}_group4">
+					{{$g1 := index $group $day 3 0}}
+					{{if eq $g1 "nil"}}
+					<option value="nil" selected>4eme membre</option>
+					{{else}}
+					<option value="nil">1er membre</option>
+					{{end}}
+				{{range $s := $students}}
+					{{if eq $g1 (index $s 0)}}
+					<option value={{index $s 0}} selected>{{index $s 1}} {{index $s 2}}</option>
+					{{else}}
+					<option value={{index $s 0}}>{{index $s 1}} {{index $s 2}}</option>
+					{{end}}
+				{{end}}
+				</select>
 				<br>
 			{{end}}
 
