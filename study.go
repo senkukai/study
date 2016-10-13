@@ -19,6 +19,7 @@ type Student struct {
 	User      string
 	Name      string
 	FirstName string
+	Class     string
 	Gender    string
 	Password  string
 }
@@ -69,17 +70,23 @@ type TmplCon struct {
 }
 
 var eventsFile = "data/events.log"
+var studentsFile = "data/students.log"
+
+var students = map[string]Student{}
+
+/*
 var students = map[string]Student{
-	"ingalls.albert": Student{"ingalls.albert", "Ingalls", "Albert", "G", ""},
-	"plotte.camille": Student{"plotte.camille", "Plotte", "Camille", "F", ""},
-	"jambon.chris":   Student{"jambon.chris", "Jambon", "Chris", "G", ""},
-	"cooper.alice":   Student{"cooper.alice", "Cooper", "Alice", "F", ""}}
+	"ingalls.albert": Student{"ingalls.albert", "Ingalls", "Albert", "TSTG", "G", ""},
+	"plotte.camille": Student{"plotte.camille", "Plotte", "Camille", "TSTG", "F", ""},
+	"jambon.chris":   Student{"jambon.chris", "Jambon", "Chris", "TSTG", "G", ""},
+	"cooper.alice":   Student{"cooper.alice", "Cooper", "Alice", "TSTG", "F", ""}}
+*/
 var classRooms = map[string]ClassRoom{
 	"210": ClassRoom{"210", "Etude individuelle Filles", 35, "F"},
 	"216": ClassRoom{"216", "Etude individuelle Garcons", 35, "G"},
-	"219": ClassRoom{"219", "Etude en groupe 1", 1, ""},
-	"207": ClassRoom{"207", "Etude en groupe 2", 1, ""},
-	"CDI": ClassRoom{"CDI", "CDI", 1, ""}}
+	"219": ClassRoom{"219", "Etude en groupe 1", 2, ""},
+	"207": ClassRoom{"207", "Etude en groupe 2", 2, ""},
+	"CDI": ClassRoom{"CDI", "CDI", 2, ""}}
 var idxDays = []string{"Lundi", "Mardi", "Mercredi", "Jeudi"}
 var idxClassRooms = []string{"210", "216", "219", "207", "CDI"}
 var RemainSeats = [4][5]int{
@@ -114,19 +121,39 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	user := r.Form["user"][0]
 	pass := r.Form["password"][0]
+	fmt.Printf("formUser:%v formPass:%v\n", user, pass)
 	_, user_ok := students[user]
+	fmt.Printf("pass_ok:%v, user_ok:%v\n", students[user].Password == pass, user_ok)
 	if students[user].Password == pass && user_ok {
 		cookie := http.Cookie{Name: "session", Value: user + "/" + hash(user), HttpOnly: false, Path: "/"}
 		http.SetCookie(w, &cookie)
 	}
 	http.Redirect(w, r, "/", http.StatusFound)
 }
+func groupChange(s string, g []string, d string) bool {
+	for _, b := range bookings {
+		if b.Student == s && b.Day == d {
+			for i := range b.Group {
+				if b.Group[i] != g[i] {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+func roomChange(s string, cr string, idx int) bool {
+	return occupancy(s)[idx] != cr
+}
 func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 	r.ParseForm()
 	for i, d := range idxDays {
-		// only create an event if student has changed classroom
-		occ := occupancy(con.Student.User)
-		if occ[i] != r.Form[d][0] {
+		// only create an event if student has changed classroom or group members
+		//occ := occupancy(con.Student.User)
+		group := []string{r.Form[d+"_group1"][0], r.Form[d+"_group2"][0], r.Form[d+"_group3"][0], r.Form[d+"_group4"][0]}
+		//if occ[i] != r.Form[d][0] {
+		if roomChange(con.Student.User, r.Form[d][0], i) || groupChange(con.Student.User, group, d) {
 			comm := &EventCon{
 				Event{
 					"book",
@@ -134,7 +161,7 @@ func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 					d,
 					con.Student.User,
 					r.Form[d][0],
-					[]string{r.Form[d+"_group1"][0], r.Form[d+"_group2"][0], r.Form[d+"_group3"][0], r.Form[d+"_group4"][0]}},
+					group},
 				make(chan error)}
 			c <- comm
 			error := <-comm.Error
@@ -173,10 +200,10 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 
 		student, _ := students[userhash[0]]
 		remainUpdate()
-		//fmt.Printf("len events:%v\n", len(events))
-		//for _, v := range bookings {
-		//	fmt.Println(v)
-		//}
+		fmt.Printf("len events:%v\n", len(events))
+		for _, v := range bookings {
+			fmt.Println(v)
+		}
 		con := &TmplCon{student, &idxDays, &idxClassRooms, &classRooms, &RemainSeats, occupancy(student.User), []error{}, studentList(student.User), groupList(student.User)}
 		fn(w, r, con)
 	}
@@ -190,7 +217,7 @@ func studentList(student string) [][]string {
 	sort.Sort(sort.StringSlice(index))
 	for _, s := range index {
 		if s != student {
-			list = append(list, []string{students[s].User, students[s].Name, students[s].FirstName})
+			list = append(list, []string{students[s].User, students[s].Name, students[s].FirstName, students[s].Class})
 		}
 	}
 	return list
@@ -201,13 +228,14 @@ func groupList(s string) map[string][][]string {
 		if b.Student == s {
 			for _, g := range b.Group {
 				if roomByDay(s, b.Day) == roomByDay(g, b.Day) {
-					list[b.Day] = append(list[b.Day], []string{g, "pr&eacute;sent"})
+					list[b.Day] = append(list[b.Day], []string{g, "present"})
 				} else {
 					list[b.Day] = append(list[b.Day], []string{g, "absent"})
 				}
 			}
 		}
 	}
+	fmt.Println("liste groupe:")
 	fmt.Println(list)
 	return list
 }
@@ -326,7 +354,6 @@ func loadEvents() {
 		time, _ := time.Parse("2006-01-02 15:04:00.000000000 +0200 CEST", splitEvent[1])
 		//when splitting, trim '[' and ']'
 		group := strings.Split(splitEvent[5][1:len(splitEvent[5])-2], " ")
-		fmt.Println(group)
 		e := Event{
 			splitEvent[0],
 			time,
@@ -336,6 +363,32 @@ func loadEvents() {
 			group}
 		events = append(events, e)
 		e.book()
+	}
+}
+func loadStudents() {
+	f, err := os.Open(studentsFile)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	r := bufio.NewReader(f)
+	for {
+		line, err := r.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			panic(err)
+		}
+		split := strings.Split(line, "_")
+		s := Student{
+			split[0],
+			split[1],
+			split[2],
+			split[3],
+			split[4],
+			split[5]}
+		students[split[0]] = s
 	}
 }
 
@@ -382,6 +435,8 @@ func remainUpdate() {
 }
 
 func main() {
+	loadStudents()
+	fmt.Println(students)
 	resetEvents()
 	loadEvents()
 

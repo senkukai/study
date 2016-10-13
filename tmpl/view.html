@@ -33,6 +33,7 @@
 				Membres du groupe: 
 				<select name="{{$day}}_group1">
 					{{$g1 := index $group $day 0 0}}
+					{{$g2 := index $group $day 0 1}}
 					{{if eq $g1 "nil"}}
 					<option value="nil" selected>1er membre</option>
 					{{else}}
@@ -40,9 +41,9 @@
 					{{end}}
 				{{range $s := $students}}
 					{{if eq $g1 (index $s 0)}}
-					<option value={{index $s 0}} selected="selected">{{index $s 1}} {{index $s 2}}</option>
+					<option value={{index $s 0}} selected="selected" {{if eq $g2 "absent"}}class="error"{{end}}>{{index $s 1}} {{index $s 2}} {{index $s 3}} = {{$g2}}</option>
 					{{else}}
-					<option value={{index $s 0}}>{{index $s 1}} {{index $s 2}}</option>
+					<option value={{index $s 0}}>{{index $s 1}} {{index $s 2}} {{index $s 3}}</option>
 					{{end}}
 				{{end}}
 				</select>
