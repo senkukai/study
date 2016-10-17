@@ -42,12 +42,11 @@ type Booking struct {
 	Group     []string
 }
 type Event struct {
-	Type      string
-	Date      time.Time
-	Day       string
-	Student   string
-	ClassRoom string
-	Group     []string
+	Type    string
+	Date    time.Time
+	Day     string
+	Student string
+	Value   string
 }
 type Context struct {
 	Student   Student
@@ -63,15 +62,16 @@ type TmplCon struct {
 	IdxClassRooms *[]string
 	ClassRooms    *map[string]ClassRoom
 	RemainSeats   *[4][5]int
-	Occupancy     [4]string
-	Errors        []error
-	Students      [][]string
-	Group         map[string][][]string
+	//RemainSeats *map[string]*[5]int
+	Occupancy [4]string
+	Errors    []error
+	Students  [][]string
+	Group     map[string][][]string
+	Values    map[string][]string
 }
 
 var eventsFile = "data/events.log"
 var studentsFile = "data/students.log"
-
 var students = map[string]Student{}
 
 /*
@@ -89,6 +89,15 @@ var classRooms = map[string]ClassRoom{
 	"CDI": ClassRoom{"CDI", "CDI", 2, ""}}
 var idxDays = []string{"Lundi", "Mardi", "Mercredi", "Jeudi"}
 var idxClassRooms = []string{"210", "216", "219", "207", "CDI"}
+
+/*
+var RemainSeats = map[string]*[5]int{
+	"Lundi":    &[5]int{},
+	"Mardi":    &[5]int{},
+	"Mercredi": &[5]int{},
+	"Jeudi":    &[5]int{}}
+*/
+
 var RemainSeats = [4][5]int{
 	[5]int{},
 	[5]int{},
@@ -143,40 +152,46 @@ func groupChange(s string, g []string, d string) bool {
 
 	return false
 }
-func roomChange(s string, cr string, idx int) bool {
+func roomChange(s string, cr string, d string) bool {
+	var idx int
+	for i, day := range idxDays {
+		if day == d {
+			idx = i
+		}
+	}
 	return occupancy(s)[idx] != cr
 }
 func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
-	r.ParseForm()
-	for i, d := range idxDays {
-		// only create an event if student has changed classroom or group members
-		//occ := occupancy(con.Student.User)
-		group := []string{r.Form[d+"_group1"][0], r.Form[d+"_group2"][0], r.Form[d+"_group3"][0], r.Form[d+"_group4"][0]}
-		//if occ[i] != r.Form[d][0] {
-		if roomChange(con.Student.User, r.Form[d][0], i) || groupChange(con.Student.User, group, d) {
-			comm := &EventCon{
-				Event{
-					"book",
-					time.Now(),
-					d,
-					con.Student.User,
-					r.Form[d][0],
-					group},
-				make(chan error)}
-			c <- comm
-			error := <-comm.Error
-			if error != nil {
-				con.Errors = append(con.Errors, error)
-			}
-		}
+	values := r.URL.Query()
+	eventType := values["t"][0]
+	day := values["d"][0]
+	if eventType == "pickgroup" {
+		con.Values = values
+		renderTemplate(w, "pickgroup", con)
+		return
 	}
-	remainUpdate()
-	con.Occupancy = occupancy(con.Student.User)
-	con.Group = groupList(con.Student.User)
-	renderTemplate(w, "view", con)
+	value := values["id"][0]
+	comm := &EventCon{
+		Event{
+			eventType,
+			time.Now(),
+			day,
+			con.Student.User,
+			value},
+		make(chan error)}
+	c <- comm
+	err := <-comm.Error
+	fmt.Println(comm)
+	fmt.Println(err)
+	if err != nil {
+		con.Errors = append(con.Errors, err)
+		renderTemplate(w, "view", con)
+	} else {
+		http.Redirect(w, r, "/", http.StatusFound)
+	}
 }
 
-var templates = template.Must(template.ParseFiles(tmplDir+"view.html", tmplDir+"login.html"))
+var templates = template.Must(template.ParseFiles(tmplDir+"pickgroup.html", tmplDir+"view.html", tmplDir+"login.html"))
 
 func renderTemplate(w http.ResponseWriter, tmpl string, c *TmplCon) {
 	err := templates.ExecuteTemplate(w, tmpl+".html", c)
@@ -200,11 +215,11 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 
 		student, _ := students[userhash[0]]
 		remainUpdate()
-		fmt.Printf("len events:%v\n", len(events))
+		//fmt.Printf("len events:%v\n", len(events))
 		for _, v := range bookings {
 			fmt.Println(v)
 		}
-		con := &TmplCon{student, &idxDays, &idxClassRooms, &classRooms, &RemainSeats, occupancy(student.User), []error{}, studentList(student.User), groupList(student.User)}
+		con := &TmplCon{student, &idxDays, &idxClassRooms, &classRooms, &RemainSeats, occupancy(student.User), []error{}, studentList(student.User), groupList(student.User), map[string][]string{}}
 		fn(w, r, con)
 	}
 }
@@ -274,21 +289,37 @@ func remaining(cr string, d string) int {
 }
 func (e Event) book() error {
 	exist := false
-	if remaining(e.ClassRoom, e.Day) > 0 {
-		for i, b := range bookings {
-			if b.Student == e.Student && b.Day == e.Day {
-				bookings[i].ClassRoom = e.ClassRoom
-				bookings[i].Group = e.Group
-				exist = true
+	for i, b := range bookings {
+		if b.Student == e.Student && b.Day == e.Day {
+			if e.Type == "room" {
+				if remaining(e.Value, e.Day) > 0 {
+					bookings[i].ClassRoom = e.Value
+				} else {
+					return errors.New("Il n'y a plus de places " + e.Day + " dans la salle suivante : " + e.Value)
+				}
+			} else if e.Type == "addgroup" && len(bookings[i].Group) < 4 {
+				fmt.Println("adding to group")
+				for _, g := range bookings[i].Group {
+					if g == e.Value {
+						return errors.New("Cet étudiant fait déjà parti du groupe de travail")
+					}
+				}
+				bookings[i].Group = append(bookings[i].Group, e.Value)
+			} else if e.Type == "remgroup" {
+				for j, g := range bookings[i].Group {
+					if g == e.Value {
+						bookings[i].Group = append(bookings[i].Group[:j], bookings[i].Group[j+1:]...)
+					}
+				}
+				//return errors.New("Cet étudiant ne fait pas partie du groupe de travail")
 			}
+			exist = true
 		}
-		if !exist {
-			bookings = append(bookings, Booking{e.Day, e.Student, e.ClassRoom, e.Group})
-		}
-		return nil
-	} else {
-		return errors.New("Il n'y a plus de places " + e.Day + " dans la salle suivante : " + e.ClassRoom)
 	}
+	if !exist {
+		bookings = append(bookings, Booking{e.Day, e.Student, e.Value, []string{}})
+	}
+	return nil
 }
 func (e Event) log() {
 	f, err := os.OpenFile(eventsFile, os.O_APPEND|os.O_WRONLY, 0700)
@@ -299,7 +330,7 @@ func (e Event) log() {
 	f.WriteString(e.String())
 }
 func (e Event) String() string {
-	return fmt.Sprintf("%v_%v_%v_%v_%v_%v\n", e.Type, e.Date, e.Day, e.Student, e.ClassRoom, e.Group)
+	return fmt.Sprintf("%v_%v_%v_%v_%v_\n", e.Type, e.Date, e.Day, e.Student, e.Value)
 }
 func eventProcessor() {
 	for e := range c {
@@ -309,7 +340,9 @@ func eventProcessor() {
 	}
 }
 func resetEvents() {
+	fmt.Println("Removing events file")
 	os.Remove(eventsFile)
+	fmt.Println("Creating new events file")
 	f, err := os.OpenFile(eventsFile, os.O_CREATE, 0700)
 	if err != nil {
 		panic(err)
@@ -318,16 +351,16 @@ func resetEvents() {
 	for _, cr := range classRooms {
 		for i, s := range students {
 			if cr.Gender == s.Gender {
-				e := Event{"book", time.Now(), "Lundi", i, cr.Id, []string{"nil", "nil", "nil", "nil"}}
+				e := Event{"room", time.Now(), "Lundi", i, cr.Id}
 				e.log()
 				events = append(events, e)
-				e = Event{"book", time.Now(), "Mardi", i, cr.Id, []string{"nil", "nil", "nil", "nil"}}
+				e = Event{"room", time.Now(), "Mardi", i, cr.Id}
 				e.log()
 				events = append(events, e)
-				e = Event{"book", time.Now(), "Mercredi", i, cr.Id, []string{"nil", "nil", "nil", "nil"}}
+				e = Event{"room", time.Now(), "Mercredi", i, cr.Id}
 				e.log()
 				events = append(events, e)
-				e = Event{"book", time.Now(), "Jeudi", i, cr.Id, []string{"nil", "nil", "nil", "nil"}}
+				e = Event{"room", time.Now(), "Jeudi", i, cr.Id}
 				e.log()
 				events = append(events, e)
 			}
@@ -352,15 +385,12 @@ func loadEvents() {
 		splitEvent := strings.Split(line, "_")
 		//convert string to time
 		time, _ := time.Parse("2006-01-02 15:04:00.000000000 +0200 CEST", splitEvent[1])
-		//when splitting, trim '[' and ']'
-		group := strings.Split(splitEvent[5][1:len(splitEvent[5])-2], " ")
 		e := Event{
 			splitEvent[0],
 			time,
 			splitEvent[2],
 			splitEvent[3],
-			splitEvent[4],
-			group}
+			splitEvent[4]}
 		events = append(events, e)
 		e.book()
 	}
@@ -413,8 +443,7 @@ func eventPopulate(c chan *EventCon) {
 						time.Now(),
 						days[rand.Intn(len(days))],
 						idUsers[rand.Intn(len(idUsers))],
-						idClassRooms[rand.Intn(len(idClassRooms))],
-						[]string{}},
+						idClassRooms[rand.Intn(len(idClassRooms))]},
 					make(chan error)}
 				c <- comm
 				if <-comm.Error == nil {
@@ -436,20 +465,15 @@ func remainUpdate() {
 
 func main() {
 	loadStudents()
-	fmt.Println(students)
+	//fmt.Println(students)
 	resetEvents()
 	loadEvents()
+	fmt.Println(bookings)
 
-	//c := make(chan *EventCon)
 	go eventProcessor()
-
-	//eventPopulate(c)
-
-	//time.Sleep(1 * time.Second)
 
 	http.HandleFunc("/login/", loginHandler)
 	http.HandleFunc("/submit", makeHandler(submitHandler))
 	http.HandleFunc("/", makeHandler(rootHandler))
 	http.ListenAndServe(":8080", nil)
-	//http.ListenAndServeTLS(":8080", "cert.pem", "key.pem", nil)
 }

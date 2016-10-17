@@ -1,0 +1,25 @@
+{{$student := .Student}}
+{{$students := .Students}}
+{{$idxclassrooms := .IdxClassRooms}}
+{{$classrooms := .ClassRooms}}
+{{$remainseats := .RemainSeats}}
+{{$occupancy := .Occupancy}}
+{{$errors := .Errors}}
+{{$group := .Group}}
+{{$values := .Values}}
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>{{$student.FirstName}} {{$student.Name}}</title>
+    </head>
+    <body>
+		{{range $i, $error := $errors}}
+		!{{$error}}<br>
+		{{end}}
+		<h4> >>{{$student.FirstName}} {{$student.Name}} (<a href="/login">Se d&eacute;connecter</a>)</h4>
+		<h3>{{index $values.d 0}}</h3>
+			{{range $s := $students}}
+			<a href="/submit?t=addgroup&d={{index $values.d 0}}&id={{index $s 0}}">{{index $s 1}} {{index $s 2}} {{index $s 3}}</a><br>
+			{{end}}
+    </body>
+</html>
