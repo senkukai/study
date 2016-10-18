@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"hash/fnv"
 	"html/template"
@@ -110,85 +109,10 @@ var c = make(chan *EventCon)
 
 var tmplDir = "tmpl/"
 
-func rootHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
-	renderTemplate(w, "view", con)
-}
 func hash(s string) string {
 	h := fnv.New32a()
 	h.Write([]byte("study/" + s))
 	return fmt.Sprint(h.Sum32())
-}
-
-func loginHandler(w http.ResponseWriter, r *http.Request) {
-	r.ParseForm()
-	if len(r.Form) == 0 {
-		fmt.Println("Form empty, delete cookie")
-		cookie := http.Cookie{Name: "session", Value: "deleted", HttpOnly: false, Path: "/"}
-		http.SetCookie(w, &cookie)
-		renderTemplate(w, "login", nil)
-		return
-	}
-	user := r.Form["user"][0]
-	pass := r.Form["password"][0]
-	fmt.Printf("formUser:%v formPass:%v\n", user, pass)
-	_, user_ok := students[user]
-	fmt.Printf("pass_ok:%v, user_ok:%v\n", students[user].Password == pass, user_ok)
-	if students[user].Password == pass && user_ok {
-		cookie := http.Cookie{Name: "session", Value: user + "/" + hash(user), HttpOnly: false, Path: "/"}
-		http.SetCookie(w, &cookie)
-	}
-	http.Redirect(w, r, "/", http.StatusFound)
-}
-func groupChange(s string, g []string, d string) bool {
-	for _, b := range bookings {
-		if b.Student == s && b.Day == d {
-			for i := range b.Group {
-				if b.Group[i] != g[i] {
-					return true
-				}
-			}
-		}
-	}
-
-	return false
-}
-func roomChange(s string, cr string, d string) bool {
-	var idx int
-	for i, day := range idxDays {
-		if day == d {
-			idx = i
-		}
-	}
-	return occupancy(s)[idx] != cr
-}
-func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
-	values := r.URL.Query()
-	eventType := values["t"][0]
-	day := values["d"][0]
-	if eventType == "pickgroup" {
-		con.Values = values
-		renderTemplate(w, "pickgroup", con)
-		return
-	}
-	value := values["id"][0]
-	comm := &EventCon{
-		Event{
-			eventType,
-			time.Now(),
-			day,
-			con.Student.User,
-			value},
-		make(chan error)}
-	c <- comm
-	err := <-comm.Error
-	fmt.Println(comm)
-	fmt.Println(err)
-	if err != nil {
-		con.Errors = append(con.Errors, err)
-		renderTemplate(w, "view", con)
-	} else {
-		http.Redirect(w, r, "/", http.StatusFound)
-	}
 }
 
 var templates = template.Must(template.ParseFiles(tmplDir+"pickgroup.html", tmplDir+"view.html", tmplDir+"login.html"))
@@ -200,29 +124,6 @@ func renderTemplate(w http.ResponseWriter, tmpl string, c *TmplCon) {
 	}
 }
 
-func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("session")
-		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusFound)
-			return
-		}
-		userhash := strings.Split(cookie.Value, "/")
-		if len(userhash) == 1 || userhash[1] != hash(userhash[0]) {
-			http.Redirect(w, r, "/login", http.StatusFound)
-			return
-		}
-
-		student, _ := students[userhash[0]]
-		remainUpdate()
-		//fmt.Printf("len events:%v\n", len(events))
-		for _, v := range bookings {
-			fmt.Println(v)
-		}
-		con := &TmplCon{student, &idxDays, &idxClassRooms, &classRooms, &RemainSeats, occupancy(student.User), []error{}, studentList(student.User), groupList(student.User), map[string][]string{}}
-		fn(w, r, con)
-	}
-}
 func studentList(student string) [][]string {
 	list := [][]string{}
 	index := []string{}
@@ -253,6 +154,28 @@ func groupList(s string) map[string][][]string {
 	fmt.Println("liste groupe:")
 	fmt.Println(list)
 	return list
+}
+func groupChange(s string, g []string, d string) bool {
+	for _, b := range bookings {
+		if b.Student == s && b.Day == d {
+			for i := range b.Group {
+				if b.Group[i] != g[i] {
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+func roomChange(s string, cr string, d string) bool {
+	var idx int
+	for i, day := range idxDays {
+		if day == d {
+			idx = i
+		}
+	}
+	return occupancy(s)[idx] != cr
 }
 func roomByDay(s string, d string) string {
 	for _, b := range bookings {
@@ -287,112 +210,12 @@ func remaining(cr string, d string) int {
 	}
 	return rem
 }
-func (e Event) book() error {
-	exist := false
-	for i, b := range bookings {
-		if b.Student == e.Student && b.Day == e.Day {
-			if e.Type == "room" {
-				if remaining(e.Value, e.Day) > 0 {
-					bookings[i].ClassRoom = e.Value
-				} else {
-					return errors.New("Il n'y a plus de places " + e.Day + " dans la salle suivante : " + e.Value)
-				}
-			} else if e.Type == "addgroup" && len(bookings[i].Group) < 4 {
-				fmt.Println("adding to group")
-				for _, g := range bookings[i].Group {
-					if g == e.Value {
-						return errors.New("Cet étudiant fait déjà parti du groupe de travail")
-					}
-				}
-				bookings[i].Group = append(bookings[i].Group, e.Value)
-			} else if e.Type == "remgroup" {
-				for j, g := range bookings[i].Group {
-					if g == e.Value {
-						bookings[i].Group = append(bookings[i].Group[:j], bookings[i].Group[j+1:]...)
-					}
-				}
-				//return errors.New("Cet étudiant ne fait pas partie du groupe de travail")
-			}
-			exist = true
+func remainUpdate() {
+	for i, d := range idxDays {
+		for j, cr := range idxClassRooms {
+			r := remaining(cr, d)
+			RemainSeats[i][j] = r
 		}
-	}
-	if !exist {
-		bookings = append(bookings, Booking{e.Day, e.Student, e.Value, []string{}})
-	}
-	return nil
-}
-func (e Event) log() {
-	f, err := os.OpenFile(eventsFile, os.O_APPEND|os.O_WRONLY, 0700)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	f.WriteString(e.String())
-}
-func (e Event) String() string {
-	return fmt.Sprintf("%v_%v_%v_%v_%v_\n", e.Type, e.Date, e.Day, e.Student, e.Value)
-}
-func eventProcessor() {
-	for e := range c {
-		events = append(events, e.Event)
-		e.Event.log()
-		e.Error <- e.Event.book()
-	}
-}
-func resetEvents() {
-	fmt.Println("Removing events file")
-	os.Remove(eventsFile)
-	fmt.Println("Creating new events file")
-	f, err := os.OpenFile(eventsFile, os.O_CREATE, 0700)
-	if err != nil {
-		panic(err)
-	}
-	f.Close()
-	for _, cr := range classRooms {
-		for i, s := range students {
-			if cr.Gender == s.Gender {
-				e := Event{"room", time.Now(), "Lundi", i, cr.Id}
-				e.log()
-				events = append(events, e)
-				e = Event{"room", time.Now(), "Mardi", i, cr.Id}
-				e.log()
-				events = append(events, e)
-				e = Event{"room", time.Now(), "Mercredi", i, cr.Id}
-				e.log()
-				events = append(events, e)
-				e = Event{"room", time.Now(), "Jeudi", i, cr.Id}
-				e.log()
-				events = append(events, e)
-			}
-		}
-	}
-}
-func loadEvents() {
-	f, err := os.Open(eventsFile)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
-	r := bufio.NewReader(f)
-	for {
-		line, err := r.ReadString('\n')
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			panic(err)
-		}
-		splitEvent := strings.Split(line, "_")
-		//convert string to time
-		time, _ := time.Parse("2006-01-02 15:04:00.000000000 +0200 CEST", splitEvent[1])
-		e := Event{
-			splitEvent[0],
-			time,
-			splitEvent[2],
-			splitEvent[3],
-			splitEvent[4]}
-		events = append(events, e)
-		e.book()
 	}
 }
 func loadStudents() {
@@ -452,14 +275,6 @@ func eventPopulate(c chan *EventCon) {
 			}
 		}(c, 100, days, idUsers, idClassRooms)
 		routine -= 1
-	}
-}
-func remainUpdate() {
-	for i, d := range idxDays {
-		for j, cr := range idxClassRooms {
-			r := remaining(cr, d)
-			RemainSeats[i][j] = r
-		}
 	}
 }
 

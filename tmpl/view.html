@@ -17,20 +17,20 @@
 		{{end}}
 		<h4> >>{{$student.FirstName}} {{$student.Name}} (<a href="/login">Se d&eacute;connecter</a>)</h4>
 			{{range $i, $day := .IdxDays}} 
+				{{$occ := index $occupancy $i}}
 			<h3>{{$day}}</h3>
 				{{range $j, $idcr := $idxclassrooms}}
-					{{$occ := index $occupancy $i}}
 					{{$rem := index $remainseats $i $j}}
 					{{$cr := index $classrooms $idcr}}
 					{{if eq $student.Gender $cr.Gender}}
 					{{if eq $occ $idcr}}<b>=></b> {{end}}<a href="/submit?t=room&id={{$idcr}}&d={{$day}}">{{$cr.Name}} ({{$rem}})</a>&emsp;
 					{{else if eq $cr.Gender ""}}
-					{{if eq $occ $idcr}}<b>=></b>{{end}}<a href="/submit?t=room&id={{$idcr}}&d={{$day}}">{{$cr.Name}} ({{$rem}})</a>&emsp;
+					{{if eq $occ $idcr}}<b>=></b>{{end}}<a href="/submit?t=room&id={{$idcr}}&d={{$day}}">{{$cr.Name}} ({{$rem}} place(s) restante(s))</a>&emsp;
 					{{end}}
 				{{end}}
 				<br>
 				{{if ne (len $group) 0}}
-					Membres du groupe: <br>
+					Groupe de travail: <br>
 					{{range $g := (index $group $day)}}
 						{{$g1 := index $g 0}}
 						{{$g2 := index $g 1}}
@@ -42,7 +42,11 @@
 						<a href="/submit?t=remgroup&id={{$g1}}&d={{$day}}">Supprimer</a></li>
 					{{end}}
 				{{end}}
-				<p><a href="/submit?t=pickgroup&d={{$day}}">Ajouter un membre au groupe</a></p>
+				{{if eq (index $classrooms $occ).Gender ""}}
+					<p><a href="/submit?t=pickgroup&d={{$day}}">Ajouter un membre au groupe</a></p>
+				{{else}}
+					<p>Pas de groupe de travail dans cette salle.</p>
+				{{end}}
 			{{end}}
     </body>
 </html>
