@@ -14,10 +14,10 @@ func (e Event) book() error {
 	exist := false
 	for i, b := range bookings {
 		if b.Student == e.Student && b.Day == e.Day {
-			if e.Type == "room" {
-				if remaining(e.Value, e.Day) > 0 {
+			if e.Type == "room" && bookings[i].ClassRoom != e.Value {
+				if remaining(e.Value, e.Day) > 0 || classRooms[e.Value].Cap == -1 {
 					bookings[i].ClassRoom = e.Value
-					if classRooms[bookings[i].ClassRoom].Gender != "" {
+					if classRooms[bookings[i].ClassRoom].Group {
 						bookings[i].Group = []string{}
 					}
 				} else {
@@ -37,13 +37,29 @@ func (e Event) book() error {
 						bookings[i].Group = append(bookings[i].Group[:j], bookings[i].Group[j+1:]...)
 					}
 				}
-				//return errors.New("Cet étudiant ne fait pas partie du groupe de travail")
+			} else if e.Type == "addrevision" || e.Type == "addexercise" || e.Type == "addresearch" {
+				e.Type = e.Type[3:]
+				if !contains(bookings[i].Work[e.Type], e.Value) {
+					bookings[i].Work[e.Type] = append(bookings[i].Work[e.Type], e.Value)
+				}
+			} else if e.Type == "remrevision" || e.Type == "remexercise" || e.Type == "remresearch" {
+				e.Type = e.Type[3:]
+				if contains(bookings[i].Work[e.Type], e.Value) {
+					for j, w := range bookings[i].Work[e.Type] {
+						if w == e.Value {
+							bookings[i].Work[e.Type] = append(bookings[i].Work[e.Type][:j], bookings[i].Work[e.Type][j+1:]...)
+						}
+					}
+				}
 			}
 			exist = true
 		}
 	}
 	if !exist {
-		bookings = append(bookings, Booking{e.Day, e.Student, e.Value, []string{}})
+		bookings = append(bookings, Booking{e.Day, e.Student, e.Value, []string{}, map[string][]string{
+			"revision": []string{},
+			"exercise": []string{},
+			"research": []string{}}})
 	}
 	return nil
 }
@@ -78,18 +94,11 @@ func resetEvents() {
 	for _, cr := range classRooms {
 		for i, s := range students {
 			if cr.Gender == s.Gender {
-				e := Event{"room", time.Now(), "Lundi", i, cr.Id}
-				e.log()
-				events = append(events, e)
-				e = Event{"room", time.Now(), "Mardi", i, cr.Id}
-				e.log()
-				events = append(events, e)
-				e = Event{"room", time.Now(), "Mercredi", i, cr.Id}
-				e.log()
-				events = append(events, e)
-				e = Event{"room", time.Now(), "Jeudi", i, cr.Id}
-				e.log()
-				events = append(events, e)
+				for _, d := range idxDays {
+					e := Event{"room", time.Now(), d, i, cr.Id}
+					e.log()
+					events = append(events, e)
+				}
 			}
 		}
 	}

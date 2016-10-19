@@ -36,9 +36,9 @@ func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 	values := r.URL.Query()
 	eventType := values["t"][0]
 	day := values["d"][0]
-	if eventType == "pickgroup" {
+	if eventType == "pickgroup" || eventType == "picksubject" {
 		con.Values = values
-		renderTemplate(w, "pickgroup", con)
+		renderTemplate(w, eventType, con)
 		return
 	}
 	value := values["id"][0]
@@ -82,7 +82,19 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 		for _, v := range bookings {
 			fmt.Println(v)
 		}
-		con := &TmplCon{student, &idxDays, &idxClassRooms, &classRooms, &RemainSeats, occupancy(student.User), []error{}, studentList(student.User), groupList(student.User), map[string][]string{}}
+		con := &TmplCon{
+			student,
+			&idxDays,
+			&idxClassRooms,
+			&idxSubjects,
+			&classRooms,
+			&RemainSeats,
+			occupancy(student.User),
+			workList(student.User),
+			[]error{},
+			studentList(student.User),
+			groupList(student.User),
+			map[string][]string{}}
 		fn(w, r, con)
 	}
 }

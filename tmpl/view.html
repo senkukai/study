@@ -4,49 +4,115 @@
 {{$classrooms := .ClassRooms}}
 {{$remainseats := .RemainSeats}}
 {{$occupancy := .Occupancy}}
+{{$work := .Work}}
 {{$errors := .Errors}}
 {{$group := .Group}}
 <!DOCTYPE html>
 <html>
     <head>
+		<!--<link rel="stylesheet" href="/bs/css/bootstrap.min.css"> -->
+		<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
         <title>{{$student.FirstName}} {{$student.Name}}</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     </head>
     <body>
+	<div class="container">
+	 <div class="row">
 		{{range $i, $error := $errors}}
-		!{{$error}}<br>
+		<div class="alert alert-danger" role="alert"><strong>{{$error}}</strong></div>
 		{{end}}
-		<h4> >>{{$student.FirstName}} {{$student.Name}} (<a href="/login">Se d&eacute;connecter</a>)</h4>
+	 </div>
+	 <div class="row">
+		 <div class="col-md-6"><h4> >>{{$student.FirstName}} {{$student.Name}} <a href="/login"><span class="glyphicon glyphicon-off"></span></a> <a href="/"><span class="glyphicon glyphicon-refresh"></span></a></h4></div>
+     </div>
 			{{range $i, $day := .IdxDays}} 
 				{{$occ := index $occupancy $i}}
-			<h3>{{$day}}</h3>
+			<div class="row">
+			 <div class="col-md-4"><h3>{{$day}}</h3></div>
+			</div>
+			<div class="row">
 				{{range $j, $idcr := $idxclassrooms}}
 					{{$rem := index $remainseats $i $j}}
 					{{$cr := index $classrooms $idcr}}
-					{{if eq $student.Gender $cr.Gender}}
-					{{if eq $occ $idcr}}<b>=></b> {{end}}<a href="/submit?t=room&id={{$idcr}}&d={{$day}}">{{$cr.Name}} ({{$rem}})</a>&emsp;
-					{{else if eq $cr.Gender ""}}
-					{{if eq $occ $idcr}}<b>=></b>{{end}}<a href="/submit?t=room&id={{$idcr}}&d={{$day}}">{{$cr.Name}} ({{$rem}} place(s) restante(s))</a>&emsp;
-					{{end}}
-				{{end}}
-				<br>
-				{{if ne (len $group) 0}}
-					Groupe de travail: <br>
-					{{range $g := (index $group $day)}}
-						{{$g1 := index $g 0}}
-						{{$g2 := index $g 1}}
-						{{range $s := $students}}
-							{{if eq (index $s 0) $g1}}
-								<li>{{index $s 1}} {{index $s 2}} {{index $s 3}} - {{$g2}}
+					{{if or (eq $student.Gender $cr.Gender) (eq $cr.Gender "")}}
+					<a href="/submit?t=room&id={{$idcr}}&d={{$day}}"
+							{{if eq $occ $idcr}}
+								class="btn btn-success" 
+							{{else}}
+								class="btn btn-default"
+							{{end}}>
+							{{$cr.Name}}
+							{{if ne $cr.Cap -1}}
+								<span class="badge">{{$rem}}</span>
 							{{end}}
-						{{end}}
-						<a href="/submit?t=remgroup&id={{$g1}}&d={{$day}}">Supprimer</a></li>
+						</a>
 					{{end}}
 				{{end}}
-				{{if eq (index $classrooms $occ).Gender ""}}
-					<p><a href="/submit?t=pickgroup&d={{$day}}">Ajouter un membre au groupe</a></p>
+			</div>
+				<br>
+				<br>
+				{{if eq (index $classrooms $occ).Group true}}
+				 <div class="row">
+				  <div class="list-group col-md-4">
+				   <div class="list-group-item">Groupe de travail <a href="/submit?t=pickgroup&d={{$day}}"><span class="glyphicon glyphicon-plus-sign"></span></a></div>
+					{{if ne (len (index $group $day)) 0}}
+					 {{range $g := (index $group $day)}}
+					  {{$g1 := index $g 0}}
+					  {{$g2 := index $g 1}}
+					  {{range $s := $students}}
+					   {{if eq (index $s 0) $g1}}
+					    <div {{if eq $g2 "present"}} class="list-group-item" {{else}} class="list-group-item list-group-item-danger" {{end}}>{{index $s 1}} {{index $s 2}} {{index $s 3}}
+					   {{end}}
+					  {{end}}
+					  <a class="btn btn-danger btn-xs" href="/submit?t=remgroup&id={{$g1}}&d={{$day}}"><span class="glyphicon glyphicon-trash"></span></a></div>
+				     {{end}}
+					{{else}}
+				     <div class="list-group-item list-group-item-warning">Aucun membre</div>
+					{{end}}
+				   </div>
+				  </div>
 				{{else}}
-					<p>Pas de groupe de travail dans cette salle.</p>
+				<div class="row">
+					<div class="list-group col-md-4">
+						<div class="list-group-item list-group-item-warning">Pas de groupe de travail dans cette salle.</div>
+					</div>
+				</div>
+			    {{end}}
+			 <div class="row">
+			  <div class="list-group col-md-4">
+			   <div class="list-group-item">Révisions <a href="/submit?t=picksubject&w=revision&d={{$day}}"><span class="glyphicon glyphicon-plus-sign"></span></a></div>
+				{{if ne (len (index $work $day "revision")) 0}}
+				 {{range $w := (index $work $day "revision")}}
+				 <div class="list-group-item">{{$w}} <a class="btn btn-danger btn-xs" href="/submit?t=remrevision&id={{$w}}&d={{$day}}"><span class="glyphicon glyphicon-trash"></span></a></div>
+				 {{end}}
+				{{else}}
+				 <div class="list-group-item list-group-item-warning">Aucune matière</div>
 				{{end}}
-			{{end}}
+			   </div>
+			  <div class="list-group col-md-4">
+			   <div class="list-group-item">Exercices <a href="/submit?t=picksubject&w=exercise&d={{$day}}"><span class="glyphicon glyphicon-plus-sign"></span></a></div>
+				{{if ne (len (index $work $day "exercise")) 0}}
+				 {{range $w := (index $work $day "exercise")}}
+				 <div class="list-group-item">{{$w}} <a class="btn btn-danger btn-xs" href="/submit?t=remexercise&id={{$w}}&d={{$day}}"><span class="glyphicon glyphicon-trash"></span></a></div>
+				 {{end}}
+				{{else}}
+				 <div class="list-group-item list-group-item-warning">Aucune matière</div>
+				{{end}}
+			   </div>
+			  <div class="list-group col-md-4">
+			   <div class="list-group-item">Recherches <a href="/submit?t=picksubject&w=research&d={{$day}}"><span class="glyphicon glyphicon-plus-sign"></span></a></div>
+				{{if ne (len (index $work $day "research")) 0}}
+				 {{range $w := (index $work $day "research")}}
+				 <div class="list-group-item">{{$w}} <a class="btn btn-danger btn-xs" href="/submit?t=remresearch&id={{$w}}&d={{$day}}"><span class="glyphicon glyphicon-trash"></span></a></div>
+				 {{end}}
+				{{else}}
+				 <div class="list-group-item list-group-item-warning">Aucune matière</div>
+				{{end}}
+			   </div>
+			  </div>
+		{{end}}
+	</div>
+	<script src="/bs/js/bootstrap.min.js"></script>
     </body>
+
 </html>

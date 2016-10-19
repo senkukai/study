@@ -1,16 +1,19 @@
 {{$student := .Student}}
 {{$students := .Students}}
 {{$idxclassrooms := .IdxClassRooms}}
+{{$idxsubjects := .IdxSubjects}}
 {{$classrooms := .ClassRooms}}
 {{$remainseats := .RemainSeats}}
 {{$occupancy := .Occupancy}}
+{{$work := .Work}}
 {{$errors := .Errors}}
 {{$group := .Group}}
 {{$values := .Values}}
+{{$day := (index $values.d 0)}}
 <!DOCTYPE html>
 <html>
     <head>
-		<link rel="stylesheet" href="/bs/bootstrap.min.css">
+		<link rel="stylesheet" href="/bs/css/bootstrap.min.css">
         <title>{{$student.FirstName}} {{$student.Name}}</title>
     </head>
     <body>
@@ -18,12 +21,13 @@
 		<div class="alert alert-danger" role="alert">{{$error}}</div>
 		{{end}}
 		<h4> >>{{$student.FirstName}} {{$student.Name}} (<a href="/login">Se d&eacute;connecter</a>)</h4>
-		<h3>{{index $values.d 0}}</h3>
-		<p><a class="btn btn-danger" href="/">Annuler l'ajout d'un membre</a></p>
+		<h3>{{$day}}</h3>
+		<p><a class="btn btn-danger" href="/">Annuler le choix d'une matière</a></p>
 			<ul class="list-group">
-			{{range $s := $students}}
+			<li class="list-group-item active">Révisions</li>
+			{{range $subject := $idxsubjects}}
 			<li class="list-group-item">
-				<a href="/submit?t=addgroup&d={{index $values.d 0}}&id={{index $s 0}}">{{index $s 1}} {{index $s 2}} {{index $s 3}}</a><br>
+				<a href="/submit?t=add{{index $values.w 0}}&d={{$day}}&id={{$subject}}">{{$subject}}</a><br>
 			</li>
 			{{end}}
 			</ul>

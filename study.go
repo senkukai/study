@@ -33,12 +33,14 @@ type ClassRoom struct {
 	Name   string
 	Cap    int
 	Gender string
+	Group  bool
 }
 type Booking struct {
 	Day       string
 	Student   string
 	ClassRoom string
 	Group     []string
+	Work      map[string][]string
 }
 type Event struct {
 	Type    string
@@ -59,10 +61,12 @@ type TmplCon struct {
 	Student       Student
 	IdxDays       *[]string
 	IdxClassRooms *[]string
+	IdxSubjects   *[]string
 	ClassRooms    *map[string]ClassRoom
 	RemainSeats   *[4][5]int
 	//RemainSeats *map[string]*[5]int
 	Occupancy [4]string
+	Work      map[string]map[string][]string
 	Errors    []error
 	Students  [][]string
 	Group     map[string][][]string
@@ -81,13 +85,14 @@ var students = map[string]Student{
 	"cooper.alice":   Student{"cooper.alice", "Cooper", "Alice", "TSTG", "F", ""}}
 */
 var classRooms = map[string]ClassRoom{
-	"210": ClassRoom{"210", "Etude individuelle Filles", 35, "F"},
-	"216": ClassRoom{"216", "Etude individuelle Garcons", 35, "G"},
-	"219": ClassRoom{"219", "Etude en groupe 1", 2, ""},
-	"207": ClassRoom{"207", "Etude en groupe 2", 2, ""},
-	"CDI": ClassRoom{"CDI", "CDI", 2, ""}}
+	"210": ClassRoom{"210", "210 Etude individuelle Filles", -1, "F", false},
+	"216": ClassRoom{"216", "216 Etude individuelle Garcons", -1, "G", false},
+	"219": ClassRoom{"219", "219 Etude en groupe", 2, "", true},
+	"207": ClassRoom{"207", "207 Etude en groupe", 2, "", true},
+	"CDI": ClassRoom{"CDI", "CDI Etude individuelle", 2, "", false}}
 var idxDays = []string{"Lundi", "Mardi", "Mercredi", "Jeudi"}
 var idxClassRooms = []string{"210", "216", "219", "207", "CDI"}
+var idxSubjects = []string{"Français", "Mathématiques", "Histoire", "Anglais", "Masturbation"}
 
 /*
 var RemainSeats = map[string]*[5]int{
@@ -115,7 +120,7 @@ func hash(s string) string {
 	return fmt.Sprint(h.Sum32())
 }
 
-var templates = template.Must(template.ParseFiles(tmplDir+"pickgroup.html", tmplDir+"view.html", tmplDir+"login.html"))
+var templates = template.Must(template.ParseFiles(tmplDir+"picksubject.html", tmplDir+"pickgroup.html", tmplDir+"view.html", tmplDir+"login.html"))
 
 func renderTemplate(w http.ResponseWriter, tmpl string, c *TmplCon) {
 	err := templates.ExecuteTemplate(w, tmpl+".html", c)
@@ -151,9 +156,24 @@ func groupList(s string) map[string][][]string {
 			}
 		}
 	}
-	fmt.Println("liste groupe:")
-	fmt.Println(list)
 	return list
+}
+func workList(s string) map[string]map[string][]string {
+	list := map[string]map[string][]string{}
+	for i, b := range bookings {
+		if b.Student == s {
+			list[b.Day] = bookings[i].Work
+		}
+	}
+	return list
+}
+func contains(slice []string, elem string) bool {
+	for _, s := range slice {
+		if s == elem {
+			return true
+		}
+	}
+	return false
 }
 func groupChange(s string, g []string, d string) bool {
 	for _, b := range bookings {
@@ -286,7 +306,7 @@ func main() {
 	fmt.Println(bookings)
 
 	go eventProcessor()
-
+	http.Handle("/bs/", http.StripPrefix("/bs/", http.FileServer(http.Dir("bs/"))))
 	http.HandleFunc("/login/", loginHandler)
 	http.HandleFunc("/submit", makeHandler(submitHandler))
 	http.HandleFunc("/", makeHandler(rootHandler))
