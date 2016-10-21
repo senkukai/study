@@ -85,8 +85,8 @@ var students = map[string]Student{
 	"cooper.alice":   Student{"cooper.alice", "Cooper", "Alice", "TSTG", "F", ""}}
 */
 var classRooms = map[string]ClassRoom{
-	"210": ClassRoom{"210", "210 Etude individuelle Filles", -1, "F", false},
-	"216": ClassRoom{"216", "216 Etude individuelle Garcons", -1, "G", false},
+	"210": ClassRoom{"210", "210 Etude individuelle", -1, "F", false},
+	"216": ClassRoom{"216", "216 Etude individuelle", -1, "G", false},
 	"219": ClassRoom{"219", "219 Etude en groupe", 2, "", true},
 	"207": ClassRoom{"207", "207 Etude en groupe", 2, "", true},
 	"CDI": ClassRoom{"CDI", "CDI Etude individuelle", 2, "", false}}
@@ -132,13 +132,25 @@ func renderTemplate(w http.ResponseWriter, tmpl string, c *TmplCon) {
 func studentList(student string) [][]string {
 	list := [][]string{}
 	index := []string{}
+	fLetter := ""
 	for _, s := range students {
 		index = append(index, s.User)
 	}
 	sort.Sort(sort.StringSlice(index))
+	for _, i := range index {
+		if fLetter != string(i[0]) {
+			fLetter = string(i[0])
+			index = append(index, fLetter)
+		}
+	}
+	sort.Sort(sort.StringSlice(index))
 	for _, s := range index {
 		if s != student {
-			list = append(list, []string{students[s].User, students[s].Name, students[s].FirstName, students[s].Class})
+			if len(s) == 1 {
+				list = append(list, []string{"index", strings.ToUpper(s), "", ""})
+			} else {
+				list = append(list, []string{students[s].User, students[s].Name, students[s].FirstName, students[s].Class})
+			}
 		}
 	}
 	return list
@@ -265,6 +277,61 @@ func loadStudents() {
 	}
 }
 
+func genStudents() {
+	names := map[string][]string{}
+	files := []string{"data/names", "data/male_fnames", "data/female_fnames"}
+	for _, file := range files {
+		f, err := os.Open(file)
+		if err != nil {
+			panic(err)
+		}
+		r := bufio.NewReader(f)
+		for {
+			line, err := r.ReadString('\n')
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				panic(err)
+			}
+			line = strings.Trim(line, "\n")
+			line = strings.TrimSpace(line)
+			names[file] = append(names[file], line)
+		}
+		f.Close()
+	}
+
+	os.Remove(studentsFile)
+	f, err := os.OpenFile(studentsFile, os.O_CREATE|os.O_WRONLY, 0700)
+	if err != nil {
+		panic(err)
+	}
+	classes := []string{"2A", "2B", "2C", "2D", "2E", "1S1", "1S2", "1L", "1ES", "1STG", "TS1", "TS2", "TL", "TES", "TSTG", "2COM", "2SEC", "2ALIM", "1COM", "1SEC", "1ALIM", "TCOM", "TSEC", "TALIM"}
+	genders := []string{"M", "F"}
+	rand.Seed(time.Now().UTC().UnixNano())
+	gen := 200
+	users := []string{}
+	for gen > 0 {
+		name := names["data/names"][rand.Intn(len(names["data/names"]))]
+		var firstname string
+		gender := genders[rand.Intn(len(genders))]
+		if gender == "M" {
+			firstname = names["data/male_fnames"][rand.Intn(len(names["data/male_fnames"]))]
+		} else if gender == "F" {
+			firstname = names["data/female_fnames"][rand.Intn(len(names["data/female_fnames"]))]
+		}
+		user := strings.ToLower(name + "." + firstname)
+		for contains(users, user) {
+			user = user + "_"
+		}
+		users = append(users, user)
+		class := classes[rand.Intn(len(classes))]
+		f.WriteString(user + "_" + name + "_" + firstname + "_" + class + "_" + gender + "__\n")
+		gen -= 1
+	}
+	f.Close()
+}
+
 func eventPopulate(c chan *EventCon) {
 	days := []string{"Lundi", "Mardi", "Mercredi", "Jeudi"}
 	idUsers := []string{}
@@ -299,11 +366,11 @@ func eventPopulate(c chan *EventCon) {
 }
 
 func main() {
+	//genStudents()
 	loadStudents()
-	//fmt.Println(students)
-	resetEvents()
+	//resetEvents()
 	loadEvents()
-	fmt.Println(bookings)
+	//fmt.Println(bookings)
 
 	go eventProcessor()
 	http.Handle("/bs/", http.StripPrefix("/bs/", http.FileServer(http.Dir("bs/"))))

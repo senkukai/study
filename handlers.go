@@ -52,14 +52,14 @@ func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 		make(chan error)}
 	c <- comm
 	err := <-comm.Error
-	fmt.Println(comm)
-	fmt.Println(err)
+	//fmt.Println(comm)
+	//fmt.Println(err)
 	if err != nil {
 		con.Errors = append(con.Errors, err)
 		renderTemplate(w, "view", con)
 		return
 	} else {
-		http.Redirect(w, r, "/", http.StatusFound)
+		http.Redirect(w, r, "/#"+day, http.StatusFound)
 	}
 }
 
@@ -78,10 +78,6 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 
 		student, _ := students[userhash[0]]
 		remainUpdate()
-		//fmt.Printf("len events:%v\n", len(events))
-		for _, v := range bookings {
-			fmt.Println(v)
-		}
 		con := &TmplCon{
 			student,
 			&idxDays,
