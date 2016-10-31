@@ -3,12 +3,121 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 )
 
 func rootHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 	renderTemplate(w, "view", con)
+}
+
+func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
+	values := r.URL.Query()
+	if len(values) == 0 {
+		renderTemplate(w, "admin", con)
+		return
+	}
+	tmpl := values["tmpl"][0]
+	r.ParseForm()
+	if len(r.PostForm) != 0 {
+		if tmpl == "admin_students" {
+			name := sanNames(r.Form.Get("name"))
+			firstname := sanNames(r.Form.Get("firstname"))
+			class := r.Form.Get("class")
+			gender := r.Form.Get("gender")
+			user := strings.ToLower(name) + "." + strings.ToLower(firstname)
+			pass := genPassword()
+			if len(name) != 0 &&
+				len(firstname) != 0 &&
+				len(strings.TrimSpace(class)) != 0 &&
+				len(strings.TrimSpace(gender)) != 0 {
+				addStudent(Student{user, name, firstname, class, gender, pass})
+			}
+			http.Redirect(w, r, "/admin?tmpl="+tmpl+"#"+user, http.StatusFound)
+			return
+		}
+		if tmpl == "admin_classrooms" {
+			id := strings.TrimSpace(r.Form.Get("id"))
+			desc := strings.TrimSpace(r.Form.Get("desc"))
+			capacity, _ := strconv.Atoi(strings.TrimSpace(r.Form.Get("cap")))
+			gender := r.Form.Get("gender")
+			group, _ := strconv.ParseBool(r.Form.Get("group"))
+			name := id
+			if group {
+				name = name + " Etude en groupe"
+			} else {
+				name = name + " Etude individuelle"
+			}
+			if desc != "" {
+				name = name + " " + desc
+			}
+			if len(id) != 0 && len(name) != 0 {
+				//fmt.Println(ClassRoom{id, name, capacity, gender, group})
+				addClassRoom(ClassRoom{id, name, capacity, gender, group})
+			}
+			http.Redirect(w, r, "/admin?tmpl="+tmpl, http.StatusFound)
+			return
+		}
+		if tmpl == "admin_subjects" {
+			name := sanNames(r.Form.Get("subject"))
+			if len(name) != 0 {
+				addSubject(name)
+			}
+			http.Redirect(w, r, "/admin?tmpl="+tmpl, http.StatusFound)
+			return
+		}
+		if tmpl == "admin_classes" {
+			name := sanClasses(r.Form.Get("class"))
+			if len(name) != 0 && !contains(classes, name) {
+				addClass(name)
+			}
+			http.Redirect(w, r, "/admin?tmpl="+tmpl, http.StatusFound)
+			return
+		}
+	}
+	action, action_ok := values["action"]
+	if action_ok {
+		if action[0] == "genpass" {
+			student := students[values["param"][0]]
+			student.Password = genPassword()
+			remStudent(student.User)
+			addStudent(student)
+		}
+		if action[0] == "remstudent" {
+			remStudent(values["param"][0])
+		}
+		if action[0] == "remsubject" {
+			remSubject(values["param"][0])
+		}
+		if action[0] == "remclass" {
+			remClass(values["param"][0])
+		}
+		if action[0] == "remclassroom" {
+			remClassRoom(values["param"][0])
+			fmt.Println(classRooms)
+		}
+		if action[0] == "moveupclassroom" {
+			moveUpClassRoom(values["param"][0])
+			fmt.Println(classRooms)
+		}
+		if action[0] == "movedownclassroom" {
+			moveDownClassRoom(values["param"][0])
+			fmt.Println(classRooms)
+		}
+		if action[0] == "moveupclass" {
+			moveUpClass(values["param"][0])
+			fmt.Println(classes)
+		}
+		if action[0] == "movedownclass" {
+			moveDownClass(values["param"][0])
+			fmt.Println(classes)
+		}
+		http.Redirect(w, r, "/admin?tmpl="+tmpl, http.StatusFound)
+		return
+	}
+
+	renderTemplate(w, tmpl, con)
 }
 
 func loginHandler(w http.ResponseWriter, r *http.Request) {
@@ -23,6 +132,14 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	user := r.Form["user"][0]
 	pass := r.Form["password"][0]
 	fmt.Printf("formUser:%v formPass:%v\n", user, pass)
+	_, admin_ok := admins[user]
+	fmt.Printf("admin pass_ok:%v, admin user_ok:%v\n", admins[user].Password == pass, admin_ok)
+	if admins[user].Password == pass && admin_ok {
+		cookie := http.Cookie{Name: "session", Value: user + "/" + hash(user), HttpOnly: false, Path: "/"}
+		http.SetCookie(w, &cookie)
+		http.Redirect(w, r, "/admin", http.StatusFound)
+		return
+	}
 	_, user_ok := students[user]
 	fmt.Printf("pass_ok:%v, user_ok:%v\n", students[user].Password == pass, user_ok)
 	if students[user].Password == pass && user_ok {
@@ -30,6 +147,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &cookie)
 	}
 	http.Redirect(w, r, "/", http.StatusFound)
+	return
 }
 
 func submitHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
@@ -75,20 +193,37 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
-
-		student, _ := students[userhash[0]]
+		fmt.Printf("r.url:%v\n", r.URL.Path)
+		_, isAdmin := admins[userhash[0]]
+		if string(r.URL.Path) == "/admin" && !isAdmin {
+			http.Redirect(w, r, "/login", http.StatusFound)
+		}
+		if string(r.URL.Path) != "/admin" && isAdmin {
+			http.Redirect(w, r, "/admin", http.StatusFound)
+		}
+		var student Student
+		var studentSlice [][]string
+		if isAdmin {
+			student = Student{"admin", "", "", "", "", ""}
+			studentSlice = adminStudentList()
+		} else {
+			student, _ = students[userhash[0]]
+			studentSlice = studentList(student.User)
+		}
 		remainUpdate()
 		con := &TmplCon{
 			student,
 			&idxDays,
+			&idxDates,
 			&idxClassRooms,
-			&idxSubjects,
+			&subjects,
 			&classRooms,
+			&classes,
 			&RemainSeats,
 			occupancy(student.User),
 			workList(student.User),
 			[]error{},
-			studentList(student.User),
+			studentSlice,
 			groupList(student.User),
 			map[string][]string{}}
 		fn(w, r, con)

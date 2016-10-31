@@ -1,7 +1,7 @@
 {{$student := .Student}}
 {{$students := .Students}}
 {{$idxclassrooms := .IdxClassRooms}}
-{{$idxsubjects := .IdxSubjects}}
+{{$subjects := .Subjects}}
 {{$classrooms := .ClassRooms}}
 {{$remainseats := .RemainSeats}}
 {{$occupancy := .Occupancy}}
@@ -20,6 +20,7 @@
   </head>
   <body>
 		<div class="container">
+
 			<div class="row">
 {{range $i, $error := $errors}}
 				<div class="alert alert-danger"
@@ -28,6 +29,7 @@
 				</div>
 {{end}}
 			</div>
+
 			<div class="row">
 				<div class="col-xs-12">
 					<h3>>> {{$student.FirstName}} {{$student.Name}} 
@@ -40,6 +42,7 @@
 					</h3>
 				</div>
 			</div>
+
 			<div class="row">
 				<div class="col-xs-12 col-sm-3">
 					<a class="btn btn-danger" href="/#{{$day}}">
@@ -47,14 +50,16 @@
 					</a>
 				</div>
 			</div>
+
 			<div class="row">
 				<div class="col-xs-12 col-sm-3">
 					<h2>{{$day}}</h2>
 				</div>
 			</div>
+
 			<div class="row">
 				<div class="col-xs-12 col-sm-3">
-{{range $subject := $idxsubjects}}
+{{range $subject := $subjects}}
 					<div>
 						<a class="btn btn-default btn-block"
 							href="/submit?t=add{{index $values.w 0}}&d={{$day}}&id={{$subject}}">
@@ -64,6 +69,7 @@
 {{end}}
 				</div>
 			</div>
+
 		</div>
 		<script type="text/javascript" src="/bs/js/bootstrap.min.js"></script>
 	</body>

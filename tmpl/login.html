@@ -1,15 +1,31 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title>Authentification</title>
-    </head>
-    <body>
-        <h4> >>Authentification</h4>
-        <form action="submit" method="POST">
-			Utilisateur: <input type="text" name="user"><br>
-			Mot de passe: <input type="password" name="password"><br>
-			<br>
-            <input type="submit" value="Se connecter">
-        </form>
-    </body>
+	<head>
+		<link rel="stylesheet" href="/bs/css/bootstrap.min.css">
+		<link rel="stylesheet" href="/bs/css/local.css">
+		<title>Authentification</title>
+		<meta name="viewport" 
+				content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	</head>
+	<body>
+		<div class="container">
+			<div class="row">
+				<h3>>> Authentification</h3>
+
+				<form class="form-inline" method="POST">
+					<div class="form-group">
+						<label for="user">Utilisateur</label>
+						<input autocorrect="off" autocapitalize="off" spellcheck="false"
+							type="text" class="form-control" id="user" name="user"/>
+					</div>
+					<div class="form-group">
+						<label for="password">Mot de passe</label>
+						<input autocorrect="off" autocapitalize="off" spellcheck="false"
+							type="password" class="form-control" id="password" name="password"/>
+					</div>
+					<button type="submit" class="btn btn-primary">Connexion</button>
+				</form>
+			</div>
+		</div>
+	</body>
 </html>

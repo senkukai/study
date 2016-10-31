@@ -1,6 +1,7 @@
 {{$student := .Student}}
 {{$students := .Students}}
 {{$idxclassrooms := .IdxClassRooms}}
+{{$idxdates := .IdxDates}}
 {{$classrooms := .ClassRooms}}
 {{$remainseats := .RemainSeats}}
 {{$occupancy := .Occupancy}}
@@ -27,12 +28,11 @@
 {{end}}
 			</div>
 			<div class="row">
-				<div class="col-md-6">
-					<h3>>> {{$student.FirstName}} {{$student.Name}}&nbsp; 
+				<div class="col-sm-4">
+					<h3>>> {{$student.FirstName}} {{$student.Name}} 
 						<a href="/login">
 							<span class="glyphicon glyphicon-off"></span>
 						</a> 
-						&nbsp;
 						<a href="/">
 							<span class="glyphicon glyphicon-refresh"></span>
 						</a>
@@ -43,7 +43,7 @@
   {{$occ := index $occupancy $i}}
 			<div class="row">
 				<div class="col-md-12">
-					<h2 id={{$day}}>{{$day}}</h3>
+					<h2 id={{$day}}>{{$day}} {{index $idxdates $i}}</h3>
 				</div>
 			</div>
       <!-- classrooms list -->
@@ -52,11 +52,13 @@
     {{$rem := index $remainseats $i $j}}
     {{$cr := index $classrooms $idcr}}
     {{if or (eq $student.Gender $cr.Gender) (eq $cr.Gender "")}}
-				<div class="col-md-3">
+			<div class="col-md-3">
       {{if eq $occ $idcr}}
-					<a class="btn btn-success btn-block" href="/submit?t=room&id={{$idcr}}&d={{$day}}">
+					<a class="btn btn-success btn-block"
+						href="/submit?t=room&id={{$idcr}}&d={{$day}}">
       {{else}}
-					<a class="btn btn-default btn-block" href="/submit?t=room&id={{$idcr}}&d={{$day}}">
+					<a class="btn btn-default btn-block"
+						href="/submit?t=room&id={{$idcr}}&d={{$day}}">
       {{end}}
 						{{$cr.Name}}
 			{{if ne $cr.Cap -1}}
@@ -109,14 +111,18 @@
         {{end}}
       {{end}}
     {{else}}
-						<tr><td colspan="5">Aucun membre</td></tr>
+						<tr>
+							<td class="warning" colspan="5">
+								Veuillez ajouter au moins un membre
+							</td>
+						</tr>
     {{end}}
 					</table>
 				</div>
 			</div>
   {{else}}
       <div class="row">
-        <div class="alert alert-warning col-sm-4">
+        <div class="alert alert-default col-sm-4">
 					Pas de groupe de travail dans cette salle
 				</div>
       </div>

@@ -1,0 +1,136 @@
+{{$idxclassrooms := .IdxClassRooms}}
+{{$classrooms := .ClassRooms}}
+<!DOCTYPE html>
+<html>
+  <head>
+		<link rel="stylesheet" href="/bs/css/bootstrap.min.css">
+		<link rel="stylesheet" href="/bs/css/local.css">
+        <title>Administration - Salles</title>
+		<meta name="viewport" 
+			content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  </head>
+  <body>
+		<div class="container">
+
+			<div class="row">
+				<div class="col-xs-12">
+					<h3>>> Administration - Salles
+						<a href="/login">
+							<span class="glyphicon glyphicon-off"></span>
+						</a> 
+						<a href="/admin?tmpl=admin_classrooms">
+							<span class="glyphicon glyphicon-refresh"></span>
+						</a>
+					</h3>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-xs-10">
+					<a class="btn btn-danger" href="/admin">
+						<span class="glyphicon glyphicon-arrow-left"></span>
+					</a>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-xs-10">
+					<form class="form-inline" action="/admin?tmpl=admin_classrooms" method="POST">
+						<div class="form-group">
+							<label for="id">Numéro</label>
+							<input autocorrect="off" autocapitalize="off" spellcheck="false"
+								type="text" class="form-control" id="id" name="id"/>
+						</div>
+						<div class="form-group">
+							<label for="desc">Descriptif</label>
+							<input autocorrect="off" autocapitalize="off" spellcheck="false"
+								type="text" class="form-control" id="desc" name="desc"/>
+						</div>
+						<div class="form-group">
+							<label for="cap">Capacité</label>
+							<input autocorrect="off" autocapitalize="off" spellcheck="false"
+								type="number" class="form-control" id="cap" name="cap"/>
+						</div>
+						<div class="form-group">
+							<label for="gender">Sexe</label>
+							<select class="form-control" id="gender" name="gender">
+								<option value="">Mixte</option>
+								<option value="F">Filles</option>
+								<option value="M">Garçons</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="group">Groupe</label>
+							<select class="form-control" id="group" name="group">
+								<option value="false">Non</option>
+								<option value="true">Oui</option>
+							</select>
+						</div>
+						<button type="submit" class="btn btn-primary">Ajouter</button>
+					</form>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-xs-10">
+					<table class="table">
+						<tr>
+							<th>Id</th>
+							<th>Nom</th>
+							<th>Capacité</th>
+							<th>Sexe</th>
+							<th>Groupe</th>
+							<th></th>
+							<th></th>
+							<th></th>
+						</tr>
+{{range $cr := $idxclassrooms}}
+							<tr>
+							<td>{{(index $classrooms $cr).Id}}</td>
+							<td>{{(index $classrooms $cr).Name}}</td>
+	{{if eq (index $classrooms $cr).Cap -1}}
+							<td>Illimité</td>
+	{{else}}
+							<td>{{(index $classrooms $cr).Cap}}</td>
+	{{end}}
+	{{if eq (index $classrooms $cr).Gender ""}}
+							<td>Mixte</td>
+	{{else if eq (index $classrooms $cr).Gender "F"}}
+							<td>Filles</td>
+	{{else}}
+							<td>Garçons</td>
+	{{end}}
+	{{if (index $classrooms $cr).Group}}
+							<td>Oui</td>
+	{{else}}
+							<td>Non</td>
+	{{end}}
+							<td>
+								<a class="btn btn-danger btn-xs" 
+								 onclick="return confirm('Suppression de la salle {{$cr}} ?')"
+								 href="/admin?tmpl=admin_classrooms&action=remclassroom&param={{(index $classrooms $cr).Id}}">
+									<span class="glyphicon glyphicon-trash"></span>
+								</a>
+							</td>
+							<td>
+								<a class="btn btn-success btn-xs" 
+								 href="/admin?tmpl=admin_classrooms&action=moveupclassroom&param={{(index $classrooms $cr).Id}}">
+									<span class="glyphicon glyphicon-arrow-up"></span>
+								</a>
+							</td>
+							<td>
+								<a class="btn btn-success btn-xs" 
+								 href="/admin?tmpl=admin_classrooms&action=movedownclassroom&param={{(index $classrooms $cr).Id}}">
+									<span class="glyphicon glyphicon-arrow-down"></span>
+								</a>
+							</td>
+						</tr>
+{{end}}
+					</table>
+				</div>
+			</div>
+
+		</div>
+		<script type="text/javascript" src="/bs/js/bootstrap.min.js"></script>
+	</body>
+</html>
