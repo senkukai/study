@@ -1,3 +1,4 @@
+{{$errors := .Errors}}
 <!DOCTYPE html>
 <html>
 	<head>
@@ -9,6 +10,14 @@
 	</head>
 	<body>
 		<div class="container">
+			<div class="row">
+{{range $i, $error := $errors}}
+				<div class="alert alert-danger"
+					role="alert">
+					<strong>{{$error}}</strong>
+				</div>
+{{end}}
+			</div>
 			<div class="row">
 				<h3>>> Authentification</h3>
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -75,6 +76,31 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 			http.Redirect(w, r, "/admin?tmpl="+tmpl, http.StatusFound)
 			return
 		}
+		if tmpl == "admin_restrictedtime" {
+			fromDay, _ := strconv.Atoi(r.Form.Get("fromday"))
+			fromHour, _ := strconv.Atoi(r.Form.Get("fromhour"))
+			fromMinute, _ := strconv.Atoi(r.Form.Get("fromminute"))
+			toDay, _ := strconv.Atoi(r.Form.Get("today"))
+			toHour, _ := strconv.Atoi(r.Form.Get("tohour"))
+			toMinute, _ := strconv.Atoi(r.Form.Get("tominute"))
+			if fromDay != -1 &&
+				fromHour != -1 &&
+				fromMinute != -1 &&
+				toDay != -1 &&
+				toHour != -1 &&
+				toMinute != -1 {
+				addRestrictedTime(
+					RestrictedTime{
+						fromDay,
+						fromHour,
+						fromMinute,
+						toDay,
+						toHour,
+						toMinute})
+			}
+			http.Redirect(w, r, "/admin?tmpl="+tmpl, http.StatusFound)
+			return
+		}
 	}
 	action, action_ok := values["action"]
 	if action_ok {
@@ -113,6 +139,11 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 			moveDownClass(values["param"][0])
 			fmt.Println(classes)
 		}
+		if action[0] == "remrestrictedtime" {
+			idx, _ := strconv.Atoi(values["param"][0])
+			remRestrictedTime(idx)
+			fmt.Println(restrictedHours)
+		}
 		http.Redirect(w, r, "/admin?tmpl="+tmpl, http.StatusFound)
 		return
 	}
@@ -123,10 +154,16 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 func loginHandler(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	if len(r.Form) == 0 {
+		var err error
 		fmt.Println("Form empty, delete cookie")
 		cookie := http.Cookie{Name: "session", Value: "deleted", HttpOnly: false, Path: "/"}
 		http.SetCookie(w, &cookie)
-		renderTemplate(w, "login", nil)
+		if !bookingsEnabled {
+			err = errors.New("Le service est indisponible à cette heure-ci")
+			renderTemplate(w, "login", &TmplCon{Errors: []error{err}})
+		} else {
+			renderTemplate(w, "login", &TmplCon{Errors: nil})
+		}
 		return
 	}
 	user := r.Form["user"][0]
@@ -201,6 +238,9 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 		if string(r.URL.Path) != "/admin" && isAdmin {
 			http.Redirect(w, r, "/admin", http.StatusFound)
 		}
+		if string(r.URL.Path) != "/admin" && !bookingsEnabled {
+			http.Redirect(w, r, "/login", http.StatusFound)
+		}
 		var student Student
 		var studentSlice [][]string
 		if isAdmin {
@@ -214,12 +254,14 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 		con := &TmplCon{
 			student,
 			&idxDays,
+			&idxWeek,
 			&idxDates,
 			&idxClassRooms,
 			&subjects,
 			&classRooms,
 			&classes,
 			&RemainSeats,
+			&restrictedHours,
 			occupancy(student.User),
 			workList(student.User),
 			[]error{},

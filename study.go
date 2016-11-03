@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"hash/fnv"
 	"html/template"
@@ -62,15 +63,30 @@ type EventCon struct {
 	Event Event
 	Error chan error
 }
+type RestrictedTime struct {
+	FromDay    int
+	FromHour   int
+	FromMinute int
+	ToDay      int
+	ToHour     int
+	ToMinute   int
+}
+type ResetTime struct {
+	Day    int
+	Hour   int
+	Minute int
+}
 type TmplCon struct {
-	Student       Student
-	IdxDays       *[]string
-	IdxDates      *[4]string
-	IdxClassRooms *[]string
-	Subjects      *[]string
-	ClassRooms    *map[string]ClassRoom
-	Classes       *[]string
-	RemainSeats   *[4][]int
+	Student        Student
+	IdxDays        *[]string
+	IdxWeek        *[]string
+	IdxDates       *[4]string
+	IdxClassRooms  *[]string
+	Subjects       *[]string
+	ClassRooms     *map[string]ClassRoom
+	Classes        *[]string
+	RemainSeats    *[4][]int
+	RestrictedTime *[]RestrictedTime
 	//RemainSeats *map[string]*[5]int
 	Occupancy [4]string
 	Work      map[string]map[string][]string
@@ -86,16 +102,19 @@ var adminsFile = "data/admins.log"
 var subjectsFile = "data/subjects.log"
 var classesFile = "data/classes.log"
 var classRoomsFile = "data/classrooms.log"
-var idxClassRoomsFile = "data/idxClassrooms.log"
+var idxClassRoomsFile = "data/idxclassrooms.log"
+var restrictedTimeFile = "data/idxrestrictedtime.log"
 var Files = []string{eventsFile,
 	studentsFile,
 	adminsFile,
 	subjectsFile,
 	classesFile,
 	classRoomsFile,
-	idxClassRoomsFile}
+	idxClassRoomsFile,
+	restrictedTimeFile}
 var students = map[string]Student{}
 var admins = map[string]Admin{}
+var bookingsEnabled = true
 
 /*
 var classRooms = map[string]ClassRoom{
@@ -107,10 +126,13 @@ var classRooms = map[string]ClassRoom{
 */
 var classRooms = map[string]ClassRoom{}
 var idxDays = []string{"Lundi", "Mardi", "Mercredi", "Jeudi"}
+var idxWeek = []string{"Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"}
 var idxDates = [4]string{}
 var idxClassRooms = []string{}
 var subjects = []string{}
 var classes = []string{}
+var restrictedHours = []RestrictedTime{}
+var resetTime = ResetTime{3, 18, 30}
 
 //var classes = []string{"2A", "2B", "2C", "2D", "2E", "1S1", "1S2", "1L", "1ES", "1STG", "TS1", "TS2", "TL", "TES", "TSTG", "2COM", "2SEC", "2ALIM", "1COM", "1SEC", "1ALIM", "TCOM", "TSEC", "TALIM"}
 
@@ -139,6 +161,7 @@ var templates = template.Must(template.ParseFiles(
 	tmplDir+"admin_subjects.html",
 	tmplDir+"admin_classes.html",
 	tmplDir+"admin_classrooms.html",
+	tmplDir+"admin_restrictedtime.html",
 	tmplDir+"picksubject.html",
 	tmplDir+"pickgroup.html",
 	tmplDir+"view.html",
@@ -155,6 +178,15 @@ func renderTemplate(w http.ResponseWriter, tmpl string, c *TmplCon) {
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
+}
+func (rt RestrictedTime) String() string {
+	fromDay := strconv.Itoa(rt.FromDay)
+	fromHour := strconv.Itoa(rt.FromHour)
+	fromMinute := strconv.Itoa(rt.FromMinute)
+	toDay := strconv.Itoa(rt.ToDay)
+	toHour := strconv.Itoa(rt.ToHour)
+	toMinute := strconv.Itoa(rt.ToMinute)
+	return fmt.Sprintf("%v_%v_%v_%v_%v_%v_\n", fromDay, fromHour, fromMinute, toDay, toHour, toMinute)
 }
 func sanNames(s string) string {
 	s = strings.TrimSpace(s)
@@ -356,6 +388,10 @@ func genPassword() string {
 
 func firstDayOfWeek() time.Time {
 	year, week := time.Now().ISOWeek()
+	//if the week is over(friday=4), select the next week
+	if time.Now().Day() >= 4 {
+		week += 1
+	}
 	timezone, _ := time.LoadLocation("Europe/Paris")
 	date := time.Date(year, 0, 0, 0, 0, 0, 0, timezone)
 	isoYear, isoWeek := date.ISOWeek()
@@ -551,6 +587,32 @@ func remStudent(s string) error {
 	delete(students, s)
 	return err
 }
+func addRestrictedTime(rt RestrictedTime) {
+	restrictedHours = append(restrictedHours, rt)
+	f, err := os.OpenFile(restrictedTimeFile, os.O_APPEND|os.O_WRONLY, 0700)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	f.WriteString(rt.String())
+	fmt.Println(rt.String())
+}
+func remRestrictedTime(idx int) {
+	for i := range restrictedHours {
+		if idx == i {
+			restrictedHours = append(restrictedHours[:i], restrictedHours[i+1:]...)
+		}
+	}
+	os.Remove(restrictedTimeFile)
+	f, err := os.OpenFile(restrictedTimeFile, os.O_CREATE|os.O_WRONLY, 0700)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	for _, rt := range restrictedHours {
+		f.WriteString(rt.String())
+	}
+}
 func loadClassRooms() {
 	f, err := os.Open(classRoomsFile)
 	if err != nil {
@@ -715,6 +777,41 @@ func loadAdmins() {
 		admins[split[0]] = s
 	}
 }
+func loadRestrictedTime() {
+	f, err := os.Open(restrictedTimeFile)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	r := bufio.NewReader(f)
+	for {
+		line, err := r.ReadString('\n')
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			panic(err)
+		}
+		line = strings.Replace(line, "\n", "", -1)
+		split := strings.Split(line, "_")
+		fromDay, _ := strconv.Atoi(split[0])
+		fromHour, _ := strconv.Atoi(split[1])
+		fromMinute, _ := strconv.Atoi(split[2])
+		toDay, _ := strconv.Atoi(split[3])
+		toHour, _ := strconv.Atoi(split[4])
+		toMinute, _ := strconv.Atoi(split[5])
+		rt := RestrictedTime{
+			fromDay,
+			fromHour,
+			fromMinute,
+			toDay,
+			toHour,
+			toMinute}
+		restrictedHours = append(restrictedHours, rt)
+	}
+}
+
+/*
 func genStudents() {
 	names := map[string][]string{}
 	files := []string{"data/names", "data/male_fnames", "data/female_fnames"}
@@ -769,7 +866,101 @@ func genStudents() {
 	}
 	f.Close()
 }
+*/
+func genStudents() {
+	students := map[string]Student{}
+	files := []string{"data/Internes filles LEGT.csv",
+		"data/Internes filles LP.csv",
+		"data/Internes garçons LEGT.csv",
+		"data/Internes garçons LP.csv"}
+	for _, file := range files {
+		f, err := os.Open(file)
+		if err != nil {
+			panic(err)
+		}
+		r := bufio.NewReader(f)
+		for {
+			line, err := r.ReadString('\n')
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				panic(err)
+			}
+			line = strings.Trim(line, "\n")
+			line = strings.TrimSpace(line)
+			fmt.Println(line)
+			line = toUtf8(line)
+			fmt.Println(line)
+			split := strings.Split(line, ";")
+			name := sanNames(split[0])
+			firstname := sanNames(split[1])
+			user := ""
+			if name != "" || firstname != "" {
+				user = strings.ToLower(name) + "." + strings.ToLower(firstname)
+			}
+			gender := strings.ToUpper(split[2])
+			class := sanClasses(split[3])
+			password := ""
+			//if user already exists(homonym), append a number and increment it if multiple cases
+			i := 1
+			_, user_exists := students[user]
+			for user_exists {
+				if i == 1 {
+					user = user + strconv.Itoa(i)
+				} else {
+					user = user[len(user)-1:] + strconv.Itoa(i)
+				}
+				_, user_exists = students[user]
+				i += 1
+			}
+			//fmt.Printf("%v %v %v %v %v %v\n", user, name, firstname, gender, class, password)
+			if name != "" && firstname != "" && user != "" && class != "" && gender != "" {
+				students[user] = Student{user, name, firstname, class, gender, password}
+			}
+		}
+		f.Close()
+	}
 
+	os.Remove(studentsFile)
+	f, err := os.OpenFile(studentsFile, os.O_CREATE|os.O_WRONLY, 0700)
+	if err != nil {
+		panic(err)
+	}
+	for s := range students {
+		f.WriteString(students[s].User + "_" +
+			students[s].Name + "_" +
+			students[s].FirstName + "_" +
+			students[s].Class + "_" +
+			students[s].Gender + "_" +
+			students[s].Password + "_\n")
+	}
+	f.Close()
+}
+
+/*
+func stripAccents(s string) string {
+	conv := [][]string{
+		[]string{"é", "e"},
+		[]string{"è", "e"},
+		[]string{"ë", "e"},
+		[]string{"ê", "e"},
+		[]string{"ï", "i"},
+		[]string{"ç", "c"},
+		[]string{"ö", "o"},
+		[]string{"ù", "u"},
+		[]string{"ü", "u"}}
+	return s
+}
+*/
+func toUtf8(s string) string {
+	var buf bytes.Buffer
+	for _, b := range []byte(s) {
+		r := rune(b)
+		buf.WriteRune(r)
+	}
+	return string(buf.Bytes())
+}
 func eventPopulate(c chan *EventCon) {
 	days := []string{"Lundi", "Mardi", "Mercredi", "Jeudi"}
 	idUsers := []string{}
@@ -802,26 +993,56 @@ func eventPopulate(c chan *EventCon) {
 		routine -= 1
 	}
 }
+func timeProcessor() {
+	for {
+		now := time.Now()
+		bookingsEnabled = true
+		//block access during these hours
+		for _, restrictedHour := range restrictedHours {
+			if now.Day() >= restrictedHour.FromDay &&
+				now.Day() <= restrictedHour.ToDay &&
+				now.Hour() >= restrictedHour.FromHour &&
+				now.Hour() <= restrictedHour.ToHour &&
+				now.Minute() >= restrictedHour.FromMinute &&
+				now.Minute() <= restrictedHour.ToMinute {
+				bookingsEnabled = false
+			}
+		}
+		//reset all events and bookings for the next week
+		if now.Day() == resetTime.Day &&
+			now.Hour() == resetTime.Hour &&
+			now.Minute() == resetTime.Minute &&
+			now.Second() == 0 {
+			fmt.Println("Events reset!")
+			resetEvents()
+			loadEvents()
+			remainUpdate()
+			updateDate()
+		}
+		time.Sleep(900 * time.Millisecond)
+	}
+}
 
 func main() {
-	//genStudents()
 	sanFiles()
+	genStudents()
 	loadAdmins()
 	loadStudents()
 	loadSubjects()
 	loadClasses()
-	fmt.Printf("subjects: %v:\n", subjects)
 	loadClassRooms()
-	fmt.Printf("classrooms: %v:\n", classRooms)
 	loadIdxClassRooms()
-	fmt.Printf("idxclassrooms: %v:\n", idxClassRooms)
 	resetEvents()
 	loadEvents()
+	loadRestrictedTime()
 	updateDate()
 	remainUpdate()
 	//fmt.Println(bookings)
 
+	//genPdf()
+
 	go eventProcessor()
+	go timeProcessor()
 	http.Handle("/bs/", http.StripPrefix("/bs/", http.FileServer(http.Dir("bs/"))))
 	http.HandleFunc("/login/", loginHandler)
 	http.HandleFunc("/admin", makeHandler(adminHandler))

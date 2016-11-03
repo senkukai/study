@@ -1,0 +1,296 @@
+{{$idxweek:= .IdxWeek}}
+{{$restrictedtime := .RestrictedTime}}
+<!DOCTYPE html>
+<html>
+  <head>
+		<link rel="stylesheet" href="/bs/css/bootstrap.min.css">
+		<link rel="stylesheet" href="/bs/css/local.css">
+        <title>Administration - Horaires d'indisponibilité</title>
+		<meta name="viewport" 
+			content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  </head>
+  <body>
+		<div class="container">
+
+			<div class="row">
+				<div class="col-xs-12">
+					<h3>>> Administration - Horaire d'indisponibilité
+						<a href="/login">
+							<span class="glyphicon glyphicon-off"></span>
+						</a> 
+						<a href="/admin?tmpl=admin_restrictedtime">
+							<span class="glyphicon glyphicon-refresh"></span>
+						</a>
+					</h3>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-xs-10">
+					<a class="btn btn-danger" href="/admin">
+						<span class="glyphicon glyphicon-arrow-left"></span>
+					</a>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-xs-10">
+					<form class="form-inline" action="/admin?tmpl=admin_restrictedtime" method="POST">
+						<div class="form-group">
+							<label for="fromday">Jour</label>
+							<select class="form-control" id="fromday" name="fromday">
+								<option value="-1" selected></option>
+								<option value="0">Lundi</option>
+								<option value="1">Mardi</option>
+								<option value="2">Mercredi</option>
+								<option value="3">Jeudi</option>
+								<option value="4">Vendredi</option>
+								<option value="5">Samedi</option>
+								<option value="6">Dimanche</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="fromhour">Heure</label>
+							<select class="form-control" id="fromhour" name="fromhour">
+								<option value="-1" selected></option>
+								<option value="0">0</option>
+								<option value="1">1</option>
+								<option value="2">2</option>
+								<option value="3">3</option>
+								<option value="4">4</option>
+								<option value="5">5</option>
+								<option value="6">6</option>
+								<option value="7">7</option>
+								<option value="8">8</option>
+								<option value="9">9</option>
+								<option value="10">10</option>
+								<option value="11">11</option>
+								<option value="12">12</option>
+								<option value="13">13</option>
+								<option value="14">14</option>
+								<option value="15">15</option>
+								<option value="16">16</option>
+								<option value="17">17</option>
+								<option value="18">18</option>
+								<option value="19">19</option>
+								<option value="20">20</option>
+								<option value="20">20</option>
+								<option value="21">21</option>
+								<option value="22">22</option>
+								<option value="23">23</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="fromminute">Minute</label>
+							<select class="form-control" id="fromminute" name="fromminute">
+								<option value="-1" selected></option>
+								<option value="0">0</option>
+								<option value="1">1</option>
+								<option value="2">2</option>
+								<option value="3">3</option>
+								<option value="4">4</option>
+								<option value="5">5</option>
+								<option value="6">6</option>
+								<option value="7">7</option>
+								<option value="8">8</option>
+								<option value="9">9</option>
+								<option value="10">10</option>
+								<option value="11">11</option>
+								<option value="12">12</option>
+								<option value="13">13</option>
+								<option value="14">14</option>
+								<option value="15">15</option>
+								<option value="16">16</option>
+								<option value="17">17</option>
+								<option value="18">18</option>
+								<option value="19">19</option>
+								<option value="20">20</option>
+								<option value="21">21</option>
+								<option value="22">22</option>
+								<option value="23">23</option>
+								<option value="24">24</option>
+								<option value="25">25</option>
+								<option value="26">26</option>
+								<option value="27">27</option>
+								<option value="28">28</option>
+								<option value="29">29</option>
+								<option value="30">30</option>
+								<option value="31">31</option>
+								<option value="32">32</option>
+								<option value="33">33</option>
+								<option value="34">34</option>
+								<option value="35">35</option>
+								<option value="36">36</option>
+								<option value="37">37</option>
+								<option value="38">38</option>
+								<option value="39">39</option>
+								<option value="40">40</option>
+								<option value="41">41</option>
+								<option value="42">42</option>
+								<option value="43">43</option>
+								<option value="44">44</option>
+								<option value="45">45</option>
+								<option value="46">46</option>
+								<option value="47">47</option>
+								<option value="48">48</option>
+								<option value="49">49</option>
+								<option value="50">50</option>
+								<option value="51">51</option>
+								<option value="52">52</option>
+								<option value="53">53</option>
+								<option value="54">54</option>
+								<option value="55">55</option>
+								<option value="56">56</option>
+								<option value="57">57</option>
+								<option value="58">58</option>
+								<option value="59">59</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="today">Jour</label>
+							<select class="form-control" id="today" name="today">
+								<option value="-1" selected></option>
+								<option value="0">Lundi</option>
+								<option value="1">Mardi</option>
+								<option value="2">Mercredi</option>
+								<option value="3">Jeudi</option>
+								<option value="4">Vendredi</option>
+								<option value="5">Samedi</option>
+								<option value="6">Dimanche</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="tohour">Heure</label>
+							<select class="form-control" id="tohour" name="tohour">
+								<option value="-1" selected></option>
+								<option value="0">0</option>
+								<option value="1">1</option>
+								<option value="2">2</option>
+								<option value="3">3</option>
+								<option value="4">4</option>
+								<option value="5">5</option>
+								<option value="6">6</option>
+								<option value="7">7</option>
+								<option value="8">8</option>
+								<option value="9">9</option>
+								<option value="10">10</option>
+								<option value="11">11</option>
+								<option value="12">12</option>
+								<option value="13">13</option>
+								<option value="14">14</option>
+								<option value="15">15</option>
+								<option value="16">16</option>
+								<option value="17">17</option>
+								<option value="18">18</option>
+								<option value="19">19</option>
+								<option value="20">20</option>
+								<option value="20">20</option>
+								<option value="21">21</option>
+								<option value="22">22</option>
+								<option value="23">23</option>
+							</select>
+						</div>
+						<div class="form-group">
+							<label for="tominute">Minute</label>
+							<select class="form-control" id="tominute" name="tominute">
+								<option value="-1" selected></option>
+								<option value="0">0</option>
+								<option value="1">1</option>
+								<option value="2">2</option>
+								<option value="3">3</option>
+								<option value="4">4</option>
+								<option value="5">5</option>
+								<option value="6">6</option>
+								<option value="7">7</option>
+								<option value="8">8</option>
+								<option value="9">9</option>
+								<option value="10">10</option>
+								<option value="11">11</option>
+								<option value="12">12</option>
+								<option value="13">13</option>
+								<option value="14">14</option>
+								<option value="15">15</option>
+								<option value="16">16</option>
+								<option value="17">17</option>
+								<option value="18">18</option>
+								<option value="19">19</option>
+								<option value="20">20</option>
+								<option value="21">21</option>
+								<option value="22">22</option>
+								<option value="23">23</option>
+								<option value="24">24</option>
+								<option value="25">25</option>
+								<option value="26">26</option>
+								<option value="27">27</option>
+								<option value="28">28</option>
+								<option value="29">29</option>
+								<option value="30">30</option>
+								<option value="31">31</option>
+								<option value="32">32</option>
+								<option value="33">33</option>
+								<option value="34">34</option>
+								<option value="35">35</option>
+								<option value="36">36</option>
+								<option value="37">37</option>
+								<option value="38">38</option>
+								<option value="39">39</option>
+								<option value="40">40</option>
+								<option value="41">41</option>
+								<option value="42">42</option>
+								<option value="43">43</option>
+								<option value="44">44</option>
+								<option value="45">45</option>
+								<option value="46">46</option>
+								<option value="47">47</option>
+								<option value="48">48</option>
+								<option value="49">49</option>
+								<option value="50">50</option>
+								<option value="51">51</option>
+								<option value="52">52</option>
+								<option value="53">53</option>
+								<option value="54">54</option>
+								<option value="55">55</option>
+								<option value="56">56</option>
+								<option value="57">57</option>
+								<option value="58">58</option>
+								<option value="59">59</option>
+							</select>
+						</div>
+						<button type="submit" class="btn btn-primary">Ajouter</button>
+					</form>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-xs-10">
+					<table class="table">
+						<tr>
+							<th>Jour</th>
+							<th>Heure</th>
+							<th>Jour</th>
+							<th>Heure</th>
+							<th></th>
+						</tr>
+{{range $i,$rt := $restrictedtime}}
+						<tr>
+							<td>{{index $idxweek $rt.FromDay}}</td>
+							<td>{{$rt.FromHour}}:{{$rt.FromMinute}}</td>
+							<td>{{index $idxweek $rt.ToDay}}</td>
+							<td>{{$rt.ToHour}}:{{$rt.ToMinute}}</td>
+							<td>
+								<a class="btn btn-danger btn-xs" 
+								 onclick="return confirm('Suppression de l\'horaire ?')"
+								 href="/admin?tmpl=admin_restrictedtime&action=remrestrictedtime&param={{$i}}">
+									<span class="glyphicon glyphicon-trash"></span>
+								</a>
+							</td>
+						</tr>
+{{end}}
+					</table>
+				</div>
+			</div>
+
+		</div>
+		<script type="text/javascript" src="/bs/js/bootstrap.min.js"></script>
+	</body>
+</html>
