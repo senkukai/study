@@ -19,6 +19,9 @@ h2 {
 .glyphicon-exclamation-sign {
 	color: red;
 }
+.spacer {
+	height: 2em;
+}
 input#id{
 	width:4em;
 }

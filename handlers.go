@@ -27,7 +27,8 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 			firstname := sanNames(r.Form.Get("firstname"))
 			class := r.Form.Get("class")
 			gender := r.Form.Get("gender")
-			user := strings.ToLower(name) + "." + strings.ToLower(firstname)
+			user := strings.ToLower(name) + strings.ToLower(firstname)
+			user = sanUser(user)
 			pass := genPassword()
 			if len(name) != 0 &&
 				len(firstname) != 0 &&
@@ -83,20 +84,21 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 			toDay, _ := strconv.Atoi(r.Form.Get("today"))
 			toHour, _ := strconv.Atoi(r.Form.Get("tohour"))
 			toMinute, _ := strconv.Atoi(r.Form.Get("tominute"))
-			if fromDay != -1 &&
+			rt := RestrictedTime{
+				fromDay,
+				fromHour,
+				fromMinute,
+				toDay,
+				toHour,
+				toMinute}
+			if rt.valid() &&
+				fromDay != -1 &&
 				fromHour != -1 &&
 				fromMinute != -1 &&
 				toDay != -1 &&
 				toHour != -1 &&
 				toMinute != -1 {
-				addRestrictedTime(
-					RestrictedTime{
-						fromDay,
-						fromHour,
-						fromMinute,
-						toDay,
-						toHour,
-						toMinute})
+				addRestrictedTime(rt)
 			}
 			http.Redirect(w, r, "/admin?tmpl="+tmpl, http.StatusFound)
 			return
@@ -166,8 +168,8 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	user := r.Form["user"][0]
-	pass := r.Form["password"][0]
+	user := sanUser(r.Form["user"][0])
+	pass := strings.TrimSpace(r.Form["password"][0])
 	fmt.Printf("formUser:%v formPass:%v\n", user, pass)
 	_, admin_ok := admins[user]
 	fmt.Printf("admin pass_ok:%v, admin user_ok:%v\n", admins[user].Password == pass, admin_ok)

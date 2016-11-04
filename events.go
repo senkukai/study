@@ -98,7 +98,7 @@ func resetEvents() {
 			if cr.Gender == s.Gender {
 				for _, d := range idxDays {
 					e := Event{"room", time.Now(), d, i, cr.Id}
-					fmt.Println(e)
+					//fmt.Println(e)
 					e.log()
 					events = append(events, e)
 				}

@@ -103,7 +103,7 @@ var subjectsFile = "data/subjects.log"
 var classesFile = "data/classes.log"
 var classRoomsFile = "data/classrooms.log"
 var idxClassRoomsFile = "data/idxclassrooms.log"
-var restrictedTimeFile = "data/idxrestrictedtime.log"
+var restrictedTimeFile = "data/restrictedtime.log"
 var Files = []string{eventsFile,
 	studentsFile,
 	adminsFile,
@@ -187,6 +187,20 @@ func (rt RestrictedTime) String() string {
 	toHour := strconv.Itoa(rt.ToHour)
 	toMinute := strconv.Itoa(rt.ToMinute)
 	return fmt.Sprintf("%v_%v_%v_%v_%v_%v_\n", fromDay, fromHour, fromMinute, toDay, toHour, toMinute)
+}
+func (rt RestrictedTime) valid() bool {
+	if rt.FromDay == rt.ToDay {
+		if rt.FromHour == rt.ToHour {
+			if rt.FromMinute > rt.ToMinute {
+				return false
+			}
+		} else if rt.FromHour > rt.ToHour {
+			return false
+		}
+	} else if rt.FromDay > rt.ToDay {
+		return false
+	}
+	return true
 }
 func sanNames(s string) string {
 	s = strings.TrimSpace(s)
@@ -889,15 +903,16 @@ func genStudents() {
 			}
 			line = strings.Trim(line, "\n")
 			line = strings.TrimSpace(line)
-			fmt.Println(line)
+			//fmt.Println(line)
 			line = toUtf8(line)
-			fmt.Println(line)
+			//fmt.Println(line)
 			split := strings.Split(line, ";")
 			name := sanNames(split[0])
 			firstname := sanNames(split[1])
 			user := ""
 			if name != "" || firstname != "" {
-				user = strings.ToLower(name) + "." + strings.ToLower(firstname)
+				user = name + "." + firstname
+				user = sanUser(user)
 			}
 			gender := strings.ToUpper(split[2])
 			class := sanClasses(split[3])
@@ -938,21 +953,38 @@ func genStudents() {
 	f.Close()
 }
 
-/*
-func stripAccents(s string) string {
-	conv := [][]string{
+func sanUser(s string) string {
+	var buf bytes.Buffer
+	var c string
+	s = strings.ToLower(s)
+	convTable := [][]string{
 		[]string{"é", "e"},
 		[]string{"è", "e"},
 		[]string{"ë", "e"},
 		[]string{"ê", "e"},
+		[]string{"æ", "ae"},
+		[]string{"œ", "oe"},
 		[]string{"ï", "i"},
 		[]string{"ç", "c"},
 		[]string{"ö", "o"},
 		[]string{"ù", "u"},
 		[]string{"ü", "u"}}
-	return s
+	for _, runeValue := range s {
+		c = string(runeValue)
+		for j := range convTable {
+			fmt.Printf("%v: %v != %v\n", s, c, convTable[j][0])
+			if c == convTable[j][0] {
+				fmt.Printf("%v: %v -> %v\n", s, c, convTable[j][1])
+				c = convTable[j][1]
+			}
+		}
+		//strip spaces inside username
+		if c != " " {
+			buf.WriteString(c)
+		}
+	}
+	return buf.String()
 }
-*/
 func toUtf8(s string) string {
 	var buf bytes.Buffer
 	for _, b := range []byte(s) {
