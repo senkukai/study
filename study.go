@@ -399,11 +399,22 @@ func genPassword() string {
 	}
 	return string(password)
 }
+func firstDayOfWeek() time.Time {
+	date := time.Now()
+	delta := -date.Day()
+	//if the week is over(friday=4), add 1 week(7 days)
+	if date.Day() > 4 {
+		delta += 7
+	}
+	date = date.AddDate(0, 0, delta)
+	return date
+}
 
+/*
 func firstDayOfWeek() time.Time {
 	year, week := time.Now().ISOWeek()
 	//if the week is over(friday=4), select the next week
-	if time.Now().Day() >= 4 {
+	if time.Now().Day() > 4 {
 		week += 1
 	}
 	timezone, _ := time.LoadLocation("Europe/Paris")
@@ -430,6 +441,7 @@ func firstDayOfWeek() time.Time {
 
 	return date
 }
+*/
 func addSubject(s string) {
 	subjects = append(subjects, s)
 	sort.Sort(sort.StringSlice(subjects))
@@ -911,7 +923,7 @@ func genStudents() {
 			firstname := sanNames(split[1])
 			user := ""
 			if name != "" || firstname != "" {
-				user = name + "." + firstname
+				user = name + firstname
 				user = sanUser(user)
 			}
 			gender := strings.ToUpper(split[2])
@@ -953,6 +965,11 @@ func genStudents() {
 	f.Close()
 }
 
+func sanPass(s string) string {
+	s = strings.ToLower(s)
+	s = strings.TrimSpace(s)
+	return s
+}
 func sanUser(s string) string {
 	var buf bytes.Buffer
 	var c string
@@ -968,20 +985,19 @@ func sanUser(s string) string {
 		[]string{"ç", "c"},
 		[]string{"ö", "o"},
 		[]string{"ù", "u"},
-		[]string{"ü", "u"}}
+		[]string{"ü", "u"},
+		[]string{" ", ""},
+		[]string{"-", ""},
+		[]string{"'", ""},
+		[]string{"_", ""}}
 	for _, runeValue := range s {
 		c = string(runeValue)
 		for j := range convTable {
-			fmt.Printf("%v: %v != %v\n", s, c, convTable[j][0])
 			if c == convTable[j][0] {
-				fmt.Printf("%v: %v -> %v\n", s, c, convTable[j][1])
 				c = convTable[j][1]
 			}
 		}
-		//strip spaces inside username
-		if c != " " {
-			buf.WriteString(c)
-		}
+		buf.WriteString(c)
 	}
 	return buf.String()
 }
@@ -1027,16 +1043,33 @@ func eventPopulate(c chan *EventCon) {
 }
 func timeProcessor() {
 	for {
+		timezone, _ := time.LoadLocation("Europe/Paris")
 		now := time.Now()
+		first := firstDayOfWeek()
 		bookingsEnabled = true
 		//block access during these hours
 		for _, restrictedHour := range restrictedHours {
-			if now.Day() >= restrictedHour.FromDay &&
-				now.Day() <= restrictedHour.ToDay &&
-				now.Hour() >= restrictedHour.FromHour &&
-				now.Hour() <= restrictedHour.ToHour &&
-				now.Minute() >= restrictedHour.FromMinute &&
-				now.Minute() <= restrictedHour.ToMinute {
+			start := time.Date(
+				first.Year(),
+				first.Month(),
+				first.Day(),
+				restrictedHour.FromHour,
+				restrictedHour.FromMinute,
+				0,
+				0,
+				timezone)
+			start = start.AddDate(0, 0, restrictedHour.FromDay)
+			end := time.Date(
+				first.Year(),
+				first.Month(),
+				first.Day(),
+				restrictedHour.ToHour,
+				restrictedHour.ToMinute,
+				0,
+				0,
+				timezone)
+			end = end.AddDate(0, 0, restrictedHour.ToDay)
+			if now.After(start) && now.Before(end) {
 				bookingsEnabled = false
 			}
 		}

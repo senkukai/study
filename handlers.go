@@ -27,7 +27,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 			firstname := sanNames(r.Form.Get("firstname"))
 			class := r.Form.Get("class")
 			gender := r.Form.Get("gender")
-			user := strings.ToLower(name) + strings.ToLower(firstname)
+			user := name + firstname
 			user = sanUser(user)
 			pass := genPassword()
 			if len(name) != 0 &&
@@ -169,11 +169,11 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user := sanUser(r.Form["user"][0])
-	pass := strings.TrimSpace(r.Form["password"][0])
+	pass := sanPass(r.Form["password"][0])
 	fmt.Printf("formUser:%v formPass:%v\n", user, pass)
 	_, admin_ok := admins[user]
 	fmt.Printf("admin pass_ok:%v, admin user_ok:%v\n", admins[user].Password == pass, admin_ok)
-	if admins[user].Password == pass && admin_ok {
+	if sanPass(admins[user].Password) == pass && admin_ok {
 		cookie := http.Cookie{Name: "session", Value: user + "/" + hash(user), HttpOnly: false, Path: "/"}
 		http.SetCookie(w, &cookie)
 		http.Redirect(w, r, "/admin", http.StatusFound)
@@ -181,7 +181,7 @@ func loginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	_, user_ok := students[user]
 	fmt.Printf("pass_ok:%v, user_ok:%v\n", students[user].Password == pass, user_ok)
-	if students[user].Password == pass && user_ok {
+	if sanPass(students[user].Password) == pass && user_ok {
 		cookie := http.Cookie{Name: "session", Value: user + "/" + hash(user), HttpOnly: false, Path: "/"}
 		http.SetCookie(w, &cookie)
 	}
@@ -236,12 +236,15 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 		_, isAdmin := admins[userhash[0]]
 		if string(r.URL.Path) == "/admin" && !isAdmin {
 			http.Redirect(w, r, "/login", http.StatusFound)
+			return
 		}
 		if string(r.URL.Path) != "/admin" && isAdmin {
 			http.Redirect(w, r, "/admin", http.StatusFound)
+			return
 		}
 		if string(r.URL.Path) != "/admin" && !bookingsEnabled {
 			http.Redirect(w, r, "/login", http.StatusFound)
+			return
 		}
 		var student Student
 		var studentSlice [][]string
