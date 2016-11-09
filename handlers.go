@@ -150,10 +150,12 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 			room := (values["room"][0])
 			day := (values["day"][0])
 			pdfStudentList(w, room, day)
+			return
 		}
 		if action[0] == "printnotice" {
 			student := (values["param"][0])
 			pdfStudentNotice(w, student)
+			return
 		}
 		http.Redirect(w, r, "/admin?tmpl="+tmpl, http.StatusFound)
 		return

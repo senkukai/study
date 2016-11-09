@@ -40,7 +40,7 @@
 			<div class="spacer"></div>
 
 			<div class="row">
-				<div class="col-sm-12">
+				<div class="col-sm-9">
 					<form class="form-inline" action="/admin?tmpl=admin_students" method="POST">
 						<div class="form-group">
 							<label for="name">Nom</label>
@@ -72,6 +72,12 @@
 						<button type="submit" class="btn btn-primary">Ajouter</button>
 					</form>
 				</div>
+				<div class="col-sm-1" id="bigprint">
+					<a class="btn btn-success btn-xs" 
+						href="/admin?tmpl=admin_students&action=printnotice&param=all">
+							<span id="bigprint" class="glyphicon glyphicon-print"></span>
+					</a>
+				</div>
 			</div>
 
 			<div class="spacer"></div>
@@ -92,12 +98,7 @@
 							<th>Mot de passe</th>
 							<th></th>
 							<th></th>
-							<th>
-								<a class="btn btn-success btn-xs" 
-								 href="/admin?tmpl=admin_students&action=printnotice&param=all">
-									<span class="glyphicon glyphicon-print"></span>
-								</a>
-							</th>
+							<th></th>
 						</tr>
 	{{else}}
 						<tr id={{index $s 0}}>

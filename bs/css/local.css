@@ -28,3 +28,9 @@ input#id{
 input#cap{
 	width:6em;
 }
+div#bigprint{
+	text-align: center;
+}
+span#bigprint{
+	font-size:2em;
+}
