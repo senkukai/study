@@ -37,7 +37,7 @@ func pdfStudentNotice(w io.Writer, student string) {
 	pdf.SetFont("Arial", "", 8)
 
 	//	_, pageh := pdf.GetPageSize()
-	//	_, _, _, mbottom := pdf.GetMargins()
+	pdf.SetAutoPageBreak(false, 20)
 	_, lineHt := pdf.GetFontSize()
 
 	if student != "all" {
@@ -66,7 +66,7 @@ func pdfStudentNotice(w io.Writer, student string) {
 			pdf.MultiCell(0, lineHt+margeCell, utf(notice), "", "", false)
 
 			if i%2 == 0 {
-				pdf.Ln(lineHt * 2)
+				pdf.Ln(20)
 			} else {
 				pdf.AddPage()
 			}
