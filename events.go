@@ -23,7 +23,10 @@ func (e Event) book() error {
 				} else {
 					return errors.New("Il n'y a plus de places " + e.Day + " dans la salle suivante : " + e.Value)
 				}
-			} else if e.Type == "addgroup" && len(bookings[i].Group) < 4 {
+			} else if e.Type == "addgroup" {
+				if len(bookings[i].Group) >= 4 {
+					return errors.New("Pas plus de 4 étudiants par groupe de travail")
+				}
 				fmt.Println("adding to group")
 				for _, g := range bookings[i].Group {
 					if g == e.Value {
@@ -56,10 +59,16 @@ func (e Event) book() error {
 		}
 	}
 	if !exist {
-		bookings = append(bookings, Booking{e.Day, e.Student, e.Value, []string{}, map[string][]string{
-			"revision": []string{},
-			"exercise": []string{},
-			"research": []string{}}})
+		bookings = append(bookings,
+			Booking{
+				e.Day,
+				e.Student,
+				e.Value,
+				[]string{},
+				map[string][]string{
+					"revision": []string{},
+					"exercise": []string{},
+					"research": []string{}}})
 	}
 	return nil
 }

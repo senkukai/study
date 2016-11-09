@@ -146,6 +146,15 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 			remRestrictedTime(idx)
 			fmt.Println(restrictedHours)
 		}
+		if action[0] == "print" {
+			room := (values["room"][0])
+			day := (values["day"][0])
+			pdfStudentList(w, room, day)
+		}
+		if action[0] == "printnotice" {
+			student := (values["param"][0])
+			pdfStudentNotice(w, student)
+		}
 		http.Redirect(w, r, "/admin?tmpl="+tmpl, http.StatusFound)
 		return
 	}

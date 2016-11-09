@@ -1,15 +1,13 @@
-{{$students := .Students}}
 {{$idxclassrooms := .IdxClassRooms}}
-{{$idxsubjects := .IdxSubjects}}
+{{$idxdates := .IdxDates}}
+{{$idxdays := .IdxDays}}
 {{$classrooms := .ClassRooms}}
-{{$classes := .Classes}}
-{{$remainseats := .RemainSeats}}
 <!DOCTYPE html>
 <html>
   <head>
 		<link rel="stylesheet" href="/bs/css/bootstrap.min.css">
 		<link rel="stylesheet" href="/bs/css/local.css">
-        <title>Administration - Listes par salles</title>
+        <title>Administration - Listes élèves par salle</title>
 		<meta name="viewport" 
 			content="width=device-width, initial-scale=1, shrink-to-fit=no">
   </head>
@@ -18,11 +16,11 @@
 
 			<div class="row">
 				<div class="col-xs-12">
-					<h3>>> Administration - Elèves
+					<h3>>> Administration - Listes élèves par salle
 						<a href="/login">
 							<span class="glyphicon glyphicon-off"></span>
 						</a> 
-						<a href="/admin?tmpl=admin_students">
+						<a href="/admin?tmpl=admin_lists">
 							<span class="glyphicon glyphicon-refresh"></span>
 						</a>
 					</h3>
@@ -40,79 +38,34 @@
 			<div class="spacer"></div>
 
 			<div class="row">
-				<div class="col-sm-12">
-					<form class="form-inline" action="/admin?tmpl=admin_students" method="POST">
-						<div class="form-group">
-							<label for="name">Nom</label>
-							<input autocorrect="off" autocapitalize="off" spellcheck="false"
-								type="text" class="form-control" id="name" name="name"/>
-						</div>
-						<div class="form-group">
-							<label for="firstname">Prénom</label>
-							<input autocorrect="off" autocapitalize="off" spellcheck="false"
-								type="text" class="form-control" id="firstname" name="firstname"/>
-						</div>
-						<div class="form-group">
-							<label for="class">Classe</label>
-							<select class="form-control" id="class" name="class">
-								<option value=""></option>
-{{range $c := $classes}}
-								<option value="{{$c}}">{{$c}}</option>
-{{end}}
-							</select>
-						</div>
-
-						<label class="form-check-inline">
-							<input class="form-check-input" type="radio" name="gender" id="inlineRadio1" value="M"> Masculin
-						</label>
-						<label class="form-check-inline">
-							<input class="form-check-input" type="radio" name="gender" id="inlineRadio2" value="F"> Féminin
-						</label>
-
-						<button type="submit" class="btn btn-primary">Ajouter</button>
-					</form>
-				</div>
-			</div>
-
-			<div class="spacer"></div>
-
-			<div class="row">
-				<div class="col-sm-10">
+				<div class="col-sm-4">
 					<table class="table">
-{{range $s := $students}}
-	{{if eq (index $s 0) "index"}}
 						<tr>
-							<td class="letter" colspan="7">{{index $s 1}}</td>
+							<th>Lundi {{index $idxdates 0}}</th>
+							<th></th>
+							<th>Mardi {{index $idxdates 1}}</th>
+							<th></th>
+							<th>Mercredi {{index $idxdates 2}}</th>
+							<th></th>
+							<th>Jeudi {{index $idxdates 3}}</th>
 						</tr>
+{{range $cr := $idxclassrooms}}
 						<tr>
-							<th>Nom utilisateur</th>
-							<th>Nom</th>
-							<th>Prénom</th>
-							<th>Classe</th>
-							<th>Mot de passe</th>
-							<th></th>
-							<th></th>
-						</tr>
-	{{else}}
-						<tr id={{index $s 0}}>
-							<td>{{index $s 0}}</td>
-							<td>{{index $s 1}}</td>
-							<td>{{index $s 2}}</td>
-							<td>{{index $s 3}}</td>
-							<td>{{index $s 4}}</td>
+	{{range $day := $idxdays}}
 							<td>
-								<a href="/admin?tmpl=admin_students&action=genpass&param={{index $s 0}}#{{index $s 0}}">
-									Générer mot de passe
+								<a class="btn btn-default btn-xs" 
+									 href="/admin?tmpl=admin_lists&action=view&room={{$cr}}&day={{$day}}">
+										{{(index $classrooms $cr).Name}}
 								</a>
 							</td>
 							<td>
-								<a onclick="return confirm('Suppression de l\'élève {{index $s 1}} {{index $s 2}} ?')"
-									href="/admin?tmpl=admin_students&action=remstudent&param={{index $s 0}}">
-									Supprimer l'élève
+								<a class="btn btn-success btn-xs" 
+									 href="/admin?tmpl=admin_lists&action=print&room={{$cr}}&day={{$day}}">
+										<span class="glyphicon glyphicon-print"></span>
 								</a>
 							</td>
-						</tr>
 	{{end}}
+						</tr>
 {{end}}
 					</table>
 				</div>

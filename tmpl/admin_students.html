@@ -92,6 +92,12 @@
 							<th>Mot de passe</th>
 							<th></th>
 							<th></th>
+							<th>
+								<a class="btn btn-success btn-xs" 
+								 href="/admin?tmpl=admin_students&action=printnotice&param=all">
+									<span class="glyphicon glyphicon-print"></span>
+								</a>
+							</th>
 						</tr>
 	{{else}}
 						<tr id={{index $s 0}}>
@@ -101,8 +107,10 @@
 							<td>{{index $s 3}}</td>
 							<td>{{index $s 4}}</td>
 							<td>
-								<a href="/admin?tmpl=admin_students&action=genpass&param={{index $s 0}}#{{index $s 0}}">
-									Générer mot de passe
+								<a class="btn btn-danger btn-xs" 
+									onclick="return confirm('Renouvellement du mot de passe de l\'élève {{index $s 1}} {{index $s 2}} ?')"
+									href="/admin?tmpl=admin_students&action=genpass&param={{index $s 0}}#{{index $s 0}}">
+										<span class="glyphicon glyphicon-lock"></span>
 								</a>
 							</td>
 							<td>
@@ -110,6 +118,12 @@
 								 onclick="return confirm('Suppression de l\'élève {{index $s 1}} {{index $s 2}} ?')"
 								 href="/admin?tmpl=admin_students&action=remstudent&param={{index $s 0}}">
 									<span class="glyphicon glyphicon-trash"></span>
+								</a>
+							</td>
+							<td>
+								<a class="btn btn-success btn-xs" 
+								 href="/admin?tmpl=admin_students&action=printnotice&param={{index $s 0}}">
+									<span class="glyphicon glyphicon-print"></span>
 								</a>
 							</td>
 						</tr>

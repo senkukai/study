@@ -116,14 +116,6 @@ var students = map[string]Student{}
 var admins = map[string]Admin{}
 var bookingsEnabled = true
 
-/*
-var classRooms = map[string]ClassRoom{
-	"210": ClassRoom{"210", "210 Etude individuelle", -1, "F", false},
-	"216": ClassRoom{"216", "216 Etude individuelle", -1, "M", false},
-	"219": ClassRoom{"219", "219 Etude en groupe", 2, "", true},
-	"207": ClassRoom{"207", "207 Etude en groupe", 2, "", true},
-	"CDI": ClassRoom{"CDI", "CDI Etude individuelle", 2, "", false}}
-*/
 var classRooms = map[string]ClassRoom{}
 var idxDays = []string{"Lundi", "Mardi", "Mercredi", "Jeudi"}
 var idxWeek = []string{"Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"}
@@ -132,9 +124,7 @@ var idxClassRooms = []string{}
 var subjects = []string{}
 var classes = []string{}
 var restrictedHours = []RestrictedTime{}
-var resetTime = ResetTime{3, 18, 30}
-
-//var classes = []string{"2A", "2B", "2C", "2D", "2E", "1S1", "1S2", "1L", "1ES", "1STG", "TS1", "TS2", "TL", "TES", "TSTG", "2COM", "2SEC", "2ALIM", "1COM", "1SEC", "1ALIM", "TCOM", "TSEC", "TALIM"}
+var resetTime = ResetTime{5, 0, 0}
 
 /*
 var RemainSeats = map[string]*[5]int{
@@ -162,6 +152,7 @@ var templates = template.Must(template.ParseFiles(
 	tmplDir+"admin_classes.html",
 	tmplDir+"admin_classrooms.html",
 	tmplDir+"admin_restrictedtime.html",
+	tmplDir+"admin_lists.html",
 	tmplDir+"picksubject.html",
 	tmplDir+"pickgroup.html",
 	tmplDir+"view.html",
@@ -225,6 +216,25 @@ func sanFiles() {
 		}
 		f.Close()
 	}
+}
+func studentListByRoom(room string, day string) [][]string {
+	list := [][]string{}
+	index := []string{}
+	for _, b := range bookings {
+		if b.ClassRoom == room && b.Day == day {
+			index = append(index, b.Student)
+		}
+	}
+	sort.Sort(sort.StringSlice(index))
+	for _, s := range index {
+		list = append(list, []string{
+			students[s].Name,
+			students[s].FirstName,
+			students[s].Class,
+			"",
+			""})
+	}
+	return list
 }
 func adminStudentList() [][]string {
 	list := [][]string{}
@@ -313,6 +323,15 @@ func contains(slice []string, elem string) bool {
 	}
 	return false
 }
+func sliceElemId(slice []string, elem string) int {
+	for i, s := range slice {
+		if s == elem {
+			return i
+		}
+	}
+	return 0
+}
+
 func groupChange(s string, g []string, d string) bool {
 	for _, b := range bookings {
 		if b.Student == s && b.Day == d {
@@ -621,7 +640,7 @@ func addRestrictedTime(rt RestrictedTime) {
 	}
 	defer f.Close()
 	f.WriteString(rt.String())
-	fmt.Println(rt.String())
+	//fmt.Println(rt.String())
 }
 func remRestrictedTime(idx int) {
 	for i := range restrictedHours {
@@ -928,7 +947,7 @@ func genStudents() {
 			}
 			gender := strings.ToUpper(split[2])
 			class := sanClasses(split[3])
-			password := ""
+			password := genPassword()
 			//if user already exists(homonym), append a number and increment it if multiple cases
 			i := 1
 			_, user_exists := students[user]
@@ -988,6 +1007,7 @@ func sanUser(s string) string {
 		[]string{"ü", "u"},
 		[]string{" ", ""},
 		[]string{"-", ""},
+		[]string{".", ""},
 		[]string{"'", ""},
 		[]string{"_", ""}}
 	for _, runeValue := range s {
@@ -1090,21 +1110,21 @@ func timeProcessor() {
 
 func main() {
 	sanFiles()
-	genStudents()
+	//genStudents()
 	loadAdmins()
 	loadStudents()
 	loadSubjects()
 	loadClasses()
 	loadClassRooms()
 	loadIdxClassRooms()
-	resetEvents()
+	//resetEvents()
 	loadEvents()
 	loadRestrictedTime()
 	updateDate()
 	remainUpdate()
 	//fmt.Println(bookings)
 
-	//genPdf()
+	//tableClip()
 
 	go eventProcessor()
 	go timeProcessor()
