@@ -160,7 +160,7 @@ var templates = template.Must(template.ParseFiles(
 
 func hash(s string) string {
 	h := fnv.New32a()
-	h.Write([]byte("study/" + s))
+	h.Write([]byte("study/" + students[s].Password))
 	return fmt.Sprint(h.Sum32())
 }
 
