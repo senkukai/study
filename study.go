@@ -124,7 +124,7 @@ var idxClassRooms = []string{}
 var subjects = []string{}
 var classes = []string{}
 var restrictedHours = []RestrictedTime{}
-var resetTime = ResetTime{5, 0, 0}
+var resetTime = ResetTime{1, 21, 56}
 
 /*
 var RemainSeats = map[string]*[5]int{
@@ -400,7 +400,8 @@ func remainUpdate() {
 }
 func updateDate() {
 	date := firstDayOfWeek()
-	//fmt.Printf("date %v\n", date)
+	fmt.Printf("firstday %v\n", date)
+	fmt.Printf("now %v\n", time.Now())
 	for i := range idxDays {
 		idxDates[i] = strconv.Itoa(date.Day()) + "/" +
 			strconv.Itoa(int(date.Month())) + "/" +
@@ -420,9 +421,9 @@ func genPassword() string {
 }
 func firstDayOfWeek() time.Time {
 	date := time.Now()
-	delta := -date.Day()
-	//if the week is over(friday=4), add 1 week(7 days)
-	if date.Day() > 4 {
+	delta := -int(date.Weekday()) + 1
+	//if the week is over(friday=5), add 1 week(7 days)
+	if int(date.Weekday()) > 5 {
 		delta += 7
 	}
 	date = date.AddDate(0, 0, delta)
@@ -1093,8 +1094,9 @@ func timeProcessor() {
 				bookingsEnabled = false
 			}
 		}
+		//fmt.Printf("%v - %v:%v\n", int(now.Weekday()), now.Hour(), now.Minute())
 		//reset all events and bookings for the next week
-		if now.Day() == resetTime.Day &&
+		if int(now.Weekday()) == resetTime.Day &&
 			now.Hour() == resetTime.Hour &&
 			now.Minute() == resetTime.Minute &&
 			now.Second() == 0 {
