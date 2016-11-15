@@ -124,7 +124,7 @@ var idxClassRooms = []string{}
 var subjects = []string{}
 var classes = []string{}
 var restrictedHours = []RestrictedTime{}
-var resetTime = ResetTime{1, 21, 56}
+var resetTime = ResetTime{6, 06, 00}
 
 /*
 var RemainSeats = map[string]*[5]int{
@@ -147,6 +147,7 @@ var c = make(chan *EventCon)
 var tmplDir = "tmpl/"
 var templates = template.Must(template.ParseFiles(
 	tmplDir+"admin.html",
+	tmplDir+"viesco.html",
 	tmplDir+"admin_students.html",
 	tmplDir+"admin_subjects.html",
 	tmplDir+"admin_classes.html",

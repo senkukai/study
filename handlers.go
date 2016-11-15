@@ -16,10 +16,19 @@ func rootHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 	values := r.URL.Query()
 	if len(values) == 0 {
-		renderTemplate(w, "admin", con)
+		if con.Student.User == "admin" {
+			renderTemplate(w, "admin", con)
+		} else if con.Student.User == "viesco" {
+			renderTemplate(w, "viesco", con)
+		}
 		return
 	}
 	tmpl := values["tmpl"][0]
+	//log out viesco user if it request an unauthorised template
+	if con.Student.User == "viesco" && tmpl != "admin_lists" {
+		http.Redirect(w, r, "/login", http.StatusFound)
+		return
+	}
 	r.ParseForm()
 	if len(r.PostForm) != 0 {
 		if tmpl == "admin_students" {
@@ -260,7 +269,7 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 		var student Student
 		var studentSlice [][]string
 		if isAdmin {
-			student = Student{"admin", "", "", "", "", ""}
+			student = Student{userhash[0], "", "", "", "", ""}
 			studentSlice = adminStudentList()
 		} else {
 			student, _ = students[userhash[0]]
