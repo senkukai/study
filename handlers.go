@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"strconv"
 	"strings"
@@ -166,6 +167,14 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 			pdfStudentNotice(w, student)
 			return
 		}
+		if action[0] == "view" {
+			room := values["room"][0]
+			day := values["day"][0]
+			con.AdminStudents = studentFullListByRoom(room, day)
+			con.Values = values
+			renderTemplate(w, tmpl, con)
+			return
+		}
 		http.Redirect(w, r, "/admin?tmpl="+tmpl, http.StatusFound)
 		return
 	}
@@ -292,7 +301,8 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 			[]error{},
 			studentSlice,
 			groupList(student.User),
-			map[string][]string{}}
+			map[string][]string{},
+			[][]template.HTML{}}
 		fn(w, r, con)
 	}
 }

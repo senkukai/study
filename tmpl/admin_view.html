@@ -1,13 +1,20 @@
+{{$students := .AdminStudents}}
 {{$idxclassrooms := .IdxClassRooms}}
+{{$subjects := .Subjects}}
+{{$classrooms := .ClassRooms}}
+{{$classes := .Classes}}
+{{$remainseats := .RemainSeats}}
 {{$idxdates := .IdxDates}}
 {{$idxdays := .IdxDays}}
-{{$classrooms := .ClassRooms}}
+{{$values := .Values}}
+{{$room := index $values.room 0}}
+{{$day := index $values.day 0}}
 <!DOCTYPE html>
 <html>
   <head>
 		<link rel="stylesheet" href="/bs/css/bootstrap.min.css">
 		<link rel="stylesheet" href="/bs/css/local.css">
-        <title>Administration - Listes élèves par salle</title>
+        <title>Administration</title>
 		<meta name="viewport" 
 			content="width=device-width, initial-scale=1, shrink-to-fit=no">
   </head>
@@ -16,11 +23,11 @@
 
 			<div class="row">
 				<div class="col-xs-12">
-					<h3>>> Administration - Listes élèves par salle
+					<h3>>> Administration
 						<a href="/login">
 							<span class="glyphicon glyphicon-off"></span>
 						</a> 
-						<a href="/admin?tmpl=admin_lists">
+						<a href="/admin?tmpl=admin_view&action=view&room={{$room}}&day={{$day}}">
 							<span class="glyphicon glyphicon-refresh"></span>
 						</a>
 					</h3>
@@ -29,7 +36,7 @@
 
 			<div class="row">
 				<div class="col-xs-12 col-sm-3">
-					<a class="btn btn-danger" href="/admin">
+					<a class="btn btn-danger" href="/admin?tmpl=admin_lists">
 						<span class="glyphicon glyphicon-arrow-left"></span>
 					</a>
 				</div>
@@ -38,36 +45,34 @@
 			<div class="spacer"></div>
 
 			<div class="row">
-				<div class="col-sm-4">
+				<div class="col-sm-10">
 					<table class="table">
+						<caption>
+							{{(index $classrooms $room).Name}} &nbsp;
+							{{$day}}
+						</caption>
 						<tr>
-							<th>Lundi {{index $idxdates 0}}</th>
-							<th></th>
-							<th>Mardi {{index $idxdates 1}}</th>
-							<th></th>
-							<th>Mercredi {{index $idxdates 2}}</th>
-							<th></th>
-							<th>Jeudi {{index $idxdates 3}}</th>
+							<th>Nom</th>
+							<th>Prénom</th>
+							<th>Classe</th>
+							<th>Révisions</th>
+							<th>Exercices</th>
+							<th>Recherches</th>
+							<th>Groupe</th>
 						</tr>
-{{range $cr := $idxclassrooms}}
+{{range $s := $students}}
 						<tr>
-	{{range $day := $idxdays}}
-							<td>
-								<a class="btn btn-default btn-xs" 
-									 href="/admin?tmpl=admin_view&action=view&room={{$cr}}&day={{$day}}">
-										{{(index $classrooms $cr).Name}}
-								</a>
-							</td>
-							<td>
-								<a class="btn btn-success btn-xs" 
-									 href="/admin?tmpl=admin_lists&action=print&room={{$cr}}&day={{$day}}">
-										<span class="glyphicon glyphicon-print"></span>
-								</a>
-							</td>
-	{{end}}
+							<td>{{index $s 0}}</td>
+							<td>{{index $s 1}}</td>
+							<td>{{index $s 2}}</td>
+							<td>{{index $s 3}}</td>
+							<td>{{index $s 4}}</td>
+							<td>{{index $s 5}}</td>
+							<td>{{index $s 6}}</td>
 						</tr>
 {{end}}
 					</table>
+					{{len $students}} élève(s)
 				</div>
 			</div>
 

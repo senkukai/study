@@ -88,12 +88,13 @@ type TmplCon struct {
 	RemainSeats    *[4][]int
 	RestrictedTime *[]RestrictedTime
 	//RemainSeats *map[string]*[5]int
-	Occupancy [4]string
-	Work      map[string]map[string][]string
-	Errors    []error
-	Students  [][]string
-	Group     map[string][][]string
-	Values    map[string][]string
+	Occupancy     [4]string
+	Work          map[string]map[string][]string
+	Errors        []error
+	Students      [][]string
+	Group         map[string][][]string
+	Values        map[string][]string
+	AdminStudents [][]template.HTML
 }
 
 var eventsFile = "data/events.log"
@@ -154,6 +155,7 @@ var templates = template.Must(template.ParseFiles(
 	tmplDir+"admin_classrooms.html",
 	tmplDir+"admin_restrictedtime.html",
 	tmplDir+"admin_lists.html",
+	tmplDir+"admin_view.html",
 	tmplDir+"picksubject.html",
 	tmplDir+"pickgroup.html",
 	tmplDir+"view.html",
@@ -237,6 +239,40 @@ func studentListByRoom(room string, day string) [][]string {
 	}
 	return list
 }
+func studentFullListByRoom(room string, day string) [][]template.HTML {
+	list := [][]template.HTML{}
+	index := []string{}
+	for _, b := range bookings {
+		if b.ClassRoom == room && b.Day == day {
+			index = append(index, b.Student)
+		}
+	}
+	sort.Sort(sort.StringSlice(index))
+	for _, s := range index {
+		var group string
+		work := make(map[string]string)
+		for _, g := range groupListByDay(s, day) {
+			group = group +
+				students[g[0]].Name + " " +
+				students[g[0]].FirstName + " " +
+				students[g[0]].Class + " " + "<br>"
+		}
+		for key, w := range workListByDay(s, day) {
+			for _, value := range w {
+				work[key] = work[key] + value + "<br>"
+			}
+		}
+		list = append(list, []template.HTML{
+			template.HTML(students[s].Name),
+			template.HTML(students[s].FirstName),
+			template.HTML(students[s].Class),
+			template.HTML(work["revision"]),
+			template.HTML(work["exercise"]),
+			template.HTML(work["research"]),
+			template.HTML(group)})
+	}
+	return list
+}
 func adminStudentList() [][]string {
 	list := [][]string{}
 	index := []string{}
@@ -307,11 +343,35 @@ func groupList(s string) map[string][][]string {
 	}
 	return list
 }
+func groupListByDay(s string, d string) [][]string {
+	list := [][]string{}
+	for _, b := range bookings {
+		if b.Student == s && b.Day == d {
+			for _, g := range b.Group {
+				if roomByDay(s, b.Day) == roomByDay(g, b.Day) {
+					list = append(list, []string{g, "present"})
+				} else {
+					list = append(list, []string{g, "absent"})
+				}
+			}
+		}
+	}
+	return list
+}
 func workList(s string) map[string]map[string][]string {
 	list := map[string]map[string][]string{}
 	for i, b := range bookings {
 		if b.Student == s {
 			list[b.Day] = bookings[i].Work
+		}
+	}
+	return list
+}
+func workListByDay(s string, d string) map[string][]string {
+	list := map[string][]string{}
+	for i, b := range bookings {
+		if b.Student == s && b.Day == d {
+			list = bookings[i].Work
 		}
 	}
 	return list
@@ -1111,6 +1171,13 @@ func timeProcessor() {
 	}
 }
 
+func fileSize(filepath string) int64 {
+	fi, err := os.Stat(filepath)
+	if err != nil {
+		panic(err)
+	}
+	return fi.Size()
+}
 func main() {
 	sanFiles()
 	//genStudents()
@@ -1120,7 +1187,9 @@ func main() {
 	loadClasses()
 	loadClassRooms()
 	loadIdxClassRooms()
-	//resetEvents()
+	if fileSize(eventsFile) == 0 {
+		resetEvents()
+	}
 	loadEvents()
 	loadRestrictedTime()
 	updateDate()
