@@ -26,7 +26,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 	}
 	tmpl := values["tmpl"][0]
 	//log out viesco user if it request an unauthorised template
-	if con.Student.User == "viesco" && tmpl != "admin_lists" {
+	if con.Student.User == "viesco" && tmpl != "admin_lists" && tmpl != "admin_view" {
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
@@ -160,6 +160,12 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 			room := (values["room"][0])
 			day := (values["day"][0])
 			pdfStudentList(w, room, day)
+			return
+		}
+		if action[0] == "printgroup" {
+			room := (values["room"][0])
+			day := (values["day"][0])
+			pdfGroupList(w, room, day)
 			return
 		}
 		if action[0] == "printnotice" {

@@ -220,6 +220,34 @@ func sanFiles() {
 		f.Close()
 	}
 }
+func studentGroupsByRoom(room string, day string) [][]string {
+	list := [][]string{}
+	index := []string{}
+	for _, b := range bookings {
+		if b.ClassRoom == room && b.Day == day {
+			index = append(index, b.Student)
+		}
+	}
+	mask := index
+	for _, s := range index {
+		var group []string
+		if contains(mask, s) {
+			group = append(group, s)
+			mask = append(mask[:sliceElemId(mask, s)], mask[sliceElemId(mask, s)+1:]...)
+		}
+		for _, g := range groupListByDay(s, day) {
+			if g[1] != "absent" && contains(mask, g[0]) {
+				group = append(group, g[0])
+				mask = append(mask[:sliceElemId(mask, g[0])], mask[sliceElemId(mask, g[0])+1:]...)
+			}
+		}
+		sort.Sort(sort.StringSlice(group))
+		if len(group) != 0 {
+			list = append(list, group)
+		}
+	}
+	return list
+}
 func studentListByRoom(room string, day string) [][]string {
 	list := [][]string{}
 	index := []string{}
@@ -250,12 +278,19 @@ func studentFullListByRoom(room string, day string) [][]template.HTML {
 	sort.Sort(sort.StringSlice(index))
 	for _, s := range index {
 		var group string
+		var subscribe string
 		work := make(map[string]string)
 		for _, g := range groupListByDay(s, day) {
+			if g[1] == "absent" {
+				subscribe = "<b>(non inscrit)</b>"
+			} else {
+				subscribe = ""
+			}
 			group = group +
 				students[g[0]].Name + " " +
 				students[g[0]].FirstName + " " +
-				students[g[0]].Class + " " + "<br>"
+				students[g[0]].Class + " " +
+				subscribe + "<br>"
 		}
 		for key, w := range workListByDay(s, day) {
 			for _, value := range w {

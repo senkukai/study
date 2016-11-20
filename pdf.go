@@ -158,6 +158,127 @@ func pdfStudentList(w io.Writer, room string, day string) {
 
 	pdf.Ln(10)
 	pdf.WriteAligned(0, 0, "Total: "+strconv.Itoa(len(rows)), "R")
+
+	if classRooms[room].Group {
+		rows = studentGroupsByRoom(room, day)
+		if len(rows) != 0 {
+			pdf.AddPage()
+		}
+		for idx, row := range rows {
+			_, lineHt := pdf.GetFontSize()
+			height := lineHt + margeCell
+
+			pdf.SetFont("Arial", "", 18)
+			pdf.WriteAligned(0, 0, utf(datefull), "C")
+			pdf.Ln(10)
+			pdf.WriteAligned(0, 0, utf(classRooms[room].Name), "C")
+			pdf.Ln(10)
+			pdf.SetFont("Arial", "", 18)
+			pdf.WriteAligned(0, 0, utf("Groupe "+strconv.Itoa(idx+1)), "C")
+			pdf.Ln(10)
+
+			x, y := pdf.GetXY()
+			if idx == 0 {
+				pdf.SetFont("Arial", "B", 12)
+				for i, txt := range []string{"Nom", "Prénom", "Classe", "", ""} {
+					width := cols[i]
+					pdf.Rect(x, y, width, height, "")
+					pdf.ClipRect(x, y, width, height, false)
+					pdf.Cell(width, height, utf(txt))
+					pdf.ClipEnd()
+					x += width
+				}
+				pdf.Ln(-1)
+				x, y = pdf.GetXY()
+			}
+			pdf.SetFont("Arial", "", 12)
+			for _, s := range row {
+				for i, txt := range []string{students[s].Name, students[s].FirstName, students[s].Class, "", ""} {
+					width := cols[i]
+					pdf.Rect(x, y, width, height, "")
+					pdf.ClipRect(x, y, width, height, false)
+					pdf.Cell(width, height, utf(txt))
+					pdf.ClipEnd()
+					x += width
+				}
+				pdf.Ln(-1)
+				x, y = pdf.GetXY()
+			}
+			if idx < len(rows)-1 {
+				pdf.AddPage()
+			}
+		}
+		pdf.Ln(10)
+	}
+
+	pdf.Output(w)
+}
+func pdfGroupList(w io.Writer, room string, day string) {
+	cols := []float64{60, 60, 20, 25, 25}
+	datefull := idxDays[sliceElemId(idxDays, day)] + " " + idxDates[sliceElemId(idxDays, day)]
+	rows := studentGroupsByRoom(room, day)
+
+	pdf := gofpdf.New("", "", "", "")
+	utf := pdf.UnicodeTranslatorFromDescriptor("")
+	pdf.AddPage()
+	pdf.SetFont("Arial", "", 12)
+
+	pdf.SetFooterFunc(func() {
+		pdf.SetY(-15)
+		pdf.SetFont("Arial", "I", 8)
+		pdf.CellFormat(0, 0, fmt.Sprintf("Page %d", pdf.PageNo()),
+			"", 0, "C", false, 0, "")
+	})
+
+	//_, pageh := pdf.GetPageSize()
+	//_, _, _, mbottom := pdf.GetMargins()
+
+	for idx, row := range rows {
+		_, lineHt := pdf.GetFontSize()
+		height := lineHt + margeCell
+
+		pdf.SetFont("Arial", "", 18)
+		pdf.WriteAligned(0, 0, utf(datefull), "C")
+		pdf.Ln(10)
+		pdf.WriteAligned(0, 0, utf(classRooms[room].Name), "C")
+		pdf.Ln(10)
+		pdf.SetFont("Arial", "", 18)
+		pdf.WriteAligned(0, 0, utf("Groupe "+strconv.Itoa(idx+1)), "C")
+		pdf.Ln(10)
+
+		x, y := pdf.GetXY()
+		if idx == 0 {
+			pdf.SetFont("Arial", "B", 12)
+			for i, txt := range []string{"Nom", "Prénom", "Classe", "", ""} {
+				width := cols[i]
+				pdf.Rect(x, y, width, height, "")
+				pdf.ClipRect(x, y, width, height, false)
+				pdf.Cell(width, height, utf(txt))
+				pdf.ClipEnd()
+				x += width
+			}
+			pdf.Ln(-1)
+			x, y = pdf.GetXY()
+		}
+		pdf.SetFont("Arial", "", 12)
+		for _, s := range row {
+			for i, txt := range []string{students[s].Name, students[s].FirstName, students[s].Class, "", ""} {
+				width := cols[i]
+				pdf.Rect(x, y, width, height, "")
+				pdf.ClipRect(x, y, width, height, false)
+				pdf.Cell(width, height, utf(txt))
+				pdf.ClipEnd()
+				x += width
+			}
+			pdf.Ln(-1)
+			x, y = pdf.GetXY()
+		}
+		if idx < len(rows)-1 {
+			pdf.AddPage()
+		}
+	}
+
+	pdf.Ln(10)
 	pdf.Output(w)
 }
 func genPdf() {
