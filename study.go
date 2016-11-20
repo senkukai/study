@@ -228,17 +228,21 @@ func studentGroupsByRoom(room string, day string) [][]string {
 			index = append(index, b.Student)
 		}
 	}
-	mask := index
+	var mask []string
 	for _, s := range index {
 		var group []string
-		if contains(mask, s) {
+		if !contains(mask, s) {
 			group = append(group, s)
-			mask = append(mask[:sliceElemId(mask, s)], mask[sliceElemId(mask, s)+1:]...)
-		}
-		for _, g := range groupListByDay(s, day) {
-			if g[1] != "absent" && contains(mask, g[0]) {
-				group = append(group, g[0])
-				mask = append(mask[:sliceElemId(mask, g[0])], mask[sliceElemId(mask, g[0])+1:]...)
+			mask = append(mask, s)
+			for _, g := range groupListByDay(s, day) {
+				if g[1] != "absent" && !contains(mask, g[0]) {
+					for _, gs := range groupListByDay(g[0], day) {
+						if gs[0] == s {
+							group = append(group, g[0])
+							mask = append(mask, g[0])
+						}
+					}
+				}
 			}
 		}
 		sort.Sort(sort.StringSlice(group))
