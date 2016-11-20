@@ -271,6 +271,22 @@ func studentListByRoom(room string, day string) [][]string {
 	}
 	return list
 }
+
+func sameGroup(s1, s2 string, day string) bool {
+	var s1_ok, s2_ok bool
+	for _, g := range groupListByDay(s1, day) {
+		if g[0] == s2 {
+			s1_ok = true
+		}
+	}
+	for _, g := range groupListByDay(s2, day) {
+		if g[0] == s1 {
+			s2_ok = true
+		}
+	}
+	return s1_ok && s2_ok
+}
+
 func studentFullListByRoom(room string, day string) [][]template.HTML {
 	list := [][]template.HTML{}
 	index := []string{}
@@ -286,7 +302,9 @@ func studentFullListByRoom(room string, day string) [][]template.HTML {
 		work := make(map[string]string)
 		for _, g := range groupListByDay(s, day) {
 			if g[1] == "absent" {
-				subscribe = "<b>(non inscrit)</b>"
+				subscribe = "<b class='error'>(non inscrit)</b>"
+			} else if !sameGroup(s, g[0], day) {
+				subscribe = "<b class='error'>(groupe différent)</b>"
 			} else {
 				subscribe = ""
 			}
