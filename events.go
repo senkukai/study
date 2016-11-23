@@ -17,9 +17,7 @@ func (e Event) book() error {
 			if e.Type == "room" && bookings[i].ClassRoom != e.Value {
 				if remaining(e.Value, e.Day) > 0 || classRooms[e.Value].Cap == -1 {
 					bookings[i].ClassRoom = e.Value
-					if classRooms[bookings[i].ClassRoom].Group {
-						bookings[i].Group = []string{}
-					}
+					bookings[i].Group = []string{}
 				} else {
 					return errors.New("Il n'y a plus de places " + e.Day + " dans la salle suivante : " + e.Value)
 				}
