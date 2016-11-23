@@ -235,7 +235,7 @@ func studentGroupsByRoom(room string, day string) [][]string {
 			group = append(group, s)
 			mask = append(mask, s)
 			for _, g := range groupListByDay(s, day) {
-				if g[1] != "absent" && !contains(mask, g[0]) {
+				if g[1] == "" && !contains(mask, g[0]) {
 					for _, gs := range groupListByDay(g[0], day) {
 						if gs[0] == s {
 							group = append(group, g[0])
@@ -390,10 +390,12 @@ func groupList(s string) map[string][][]string {
 	for _, b := range bookings {
 		if b.Student == s {
 			for _, g := range b.Group {
-				if roomByDay(s, b.Day) == roomByDay(g, b.Day) {
-					list[b.Day] = append(list[b.Day], []string{g, "present"})
-				} else {
+				if roomByDay(s, b.Day) != roomByDay(g, b.Day) {
 					list[b.Day] = append(list[b.Day], []string{g, "absent"})
+				} else if !sameGroup(s, g, b.Day) {
+					list[b.Day] = append(list[b.Day], []string{g, "notingroup"})
+				} else {
+					list[b.Day] = append(list[b.Day], []string{g, ""})
 				}
 			}
 		}
@@ -406,7 +408,7 @@ func groupListByDay(s string, d string) [][]string {
 		if b.Student == s && b.Day == d {
 			for _, g := range b.Group {
 				if roomByDay(s, b.Day) == roomByDay(g, b.Day) {
-					list = append(list, []string{g, "present"})
+					list = append(list, []string{g, ""})
 				} else {
 					list = append(list, []string{g, "absent"})
 				}
