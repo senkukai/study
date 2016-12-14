@@ -43,7 +43,7 @@
   {{$occ := index $occupancy $i}}
 			<div class="row">
 				<div class="col-md-12">
-					<h2 id={{$day}}>{{$day}} {{index $idxdates $i}}</h3>
+					<h2 id="{{$day}}">{{$day}} {{index $idxdates $i}}</h2>
 				</div>
 			</div>
       <!-- classrooms list -->
@@ -52,7 +52,7 @@
     {{$rem := index $remainseats $i $j}}
     {{$cr := index $classrooms $idcr}}
     {{if or (eq $student.Gender $cr.Gender) (eq $cr.Gender "")}}
-			<div class="col-md-3">
+			<div class="col-md-4">
       {{if eq $occ $idcr}}
 					<a class="btn btn-success btn-block"
 						href="/submit?t=room&id={{$idcr}}&d={{$day}}">

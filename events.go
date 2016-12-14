@@ -11,7 +11,8 @@ import (
 )
 
 func (e Event) book() error {
-	exist := false
+	fmt.Printf("book: %v", e)
+	existingEvent := false
 	for i, b := range bookings {
 		if b.Student == e.Student && b.Day == e.Day {
 			if e.Type == "room" && bookings[i].ClassRoom != e.Value {
@@ -38,12 +39,16 @@ func (e Event) book() error {
 						bookings[i].Group = append(bookings[i].Group[:j], bookings[i].Group[j+1:]...)
 					}
 				}
-			} else if e.Type == "addrevision" || e.Type == "addexercise" || e.Type == "addresearch" {
+			} else if e.Type == "addrevision" ||
+				e.Type == "addexercise" ||
+				e.Type == "addresearch" {
 				e.Type = e.Type[3:]
 				if !contains(bookings[i].Work[e.Type], e.Value) {
 					bookings[i].Work[e.Type] = append(bookings[i].Work[e.Type], e.Value)
 				}
-			} else if e.Type == "remrevision" || e.Type == "remexercise" || e.Type == "remresearch" {
+			} else if e.Type == "remrevision" ||
+				e.Type == "remexercise" ||
+				e.Type == "remresearch" {
 				e.Type = e.Type[3:]
 				if contains(bookings[i].Work[e.Type], e.Value) {
 					for j, w := range bookings[i].Work[e.Type] {
@@ -53,10 +58,31 @@ func (e Event) book() error {
 					}
 				}
 			}
-			exist = true
+			existingEvent = true
 		}
+
 	}
-	if !exist {
+	if e.Type == "present" {
+		if !contains(absents, e.Student) {
+			return errors.New("Cet étudiant est déjà présent")
+		}
+		for i, absent := range absents {
+			if absent == e.Student {
+				absents = append(absents[:i], absents[i+1:]...)
+			}
+		}
+		existingEvent = true
+	}
+	if e.Type == "absent" {
+		fmt.Printf("book absent: %v\n", e)
+		if contains(absents, e.Student) {
+			return errors.New("Cet étudiant est déjà absent")
+		}
+		absents = append(absents, e.Student)
+		existingEvent = true
+	}
+	fmt.Printf("Existing event: %v\n", existingEvent)
+	if !existingEvent {
 		bookings = append(bookings,
 			Booking{
 				e.Day,
@@ -87,6 +113,7 @@ func eventProcessor() {
 		events = append(events, e.Event)
 		e.Event.log()
 		e.Error <- e.Event.book()
+		fmt.Printf("processor: %v", e)
 	}
 }
 func resetEvents() {
@@ -112,6 +139,12 @@ func resetEvents() {
 			}
 		}
 	}
+	for _, absent := range absents {
+		e := Event{"absent", time.Now(), "", absent, ""}
+		e.log()
+		events = append(events, e)
+	}
+	absents = []string{}
 }
 func loadEvents() {
 	f, err := os.Open(eventsFile)

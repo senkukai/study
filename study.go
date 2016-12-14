@@ -87,6 +87,7 @@ type TmplCon struct {
 	Classes        *[]string
 	RemainSeats    *[4][]int
 	RestrictedTime *[]RestrictedTime
+	Absents        [][]string
 	//RemainSeats *map[string]*[5]int
 	Occupancy     [4]string
 	Work          map[string]map[string][]string
@@ -116,6 +117,7 @@ var Files = []string{eventsFile,
 var students = map[string]Student{}
 var admins = map[string]Admin{}
 var bookingsEnabled = true
+var absents = []string{}
 
 var classRooms = map[string]ClassRoom{}
 var idxDays = []string{"Lundi", "Mardi", "Mercredi", "Jeudi"}
@@ -149,6 +151,7 @@ var tmplDir = "tmpl/"
 var templates = template.Must(template.ParseFiles(
 	tmplDir+"admin.html",
 	tmplDir+"viesco.html",
+	tmplDir+"admin_absents.html",
 	tmplDir+"admin_students.html",
 	tmplDir+"admin_subjects.html",
 	tmplDir+"admin_classes.html",
@@ -156,6 +159,7 @@ var templates = template.Must(template.ParseFiles(
 	tmplDir+"admin_restrictedtime.html",
 	tmplDir+"admin_lists.html",
 	tmplDir+"admin_view.html",
+	tmplDir+"admin_pickabsent.html",
 	tmplDir+"picksubject.html",
 	tmplDir+"pickgroup.html",
 	tmplDir+"view.html",
@@ -224,7 +228,7 @@ func studentGroupsByRoom(room string, day string) [][]string {
 	list := [][]string{}
 	index := []string{}
 	for _, b := range bookings {
-		if b.ClassRoom == room && b.Day == day {
+		if b.ClassRoom == room && b.Day == day && !contains(absents, b.Student) {
 			index = append(index, b.Student)
 		}
 	}
@@ -256,7 +260,7 @@ func studentListByRoom(room string, day string) [][]string {
 	list := [][]string{}
 	index := []string{}
 	for _, b := range bookings {
-		if b.ClassRoom == room && b.Day == day {
+		if b.ClassRoom == room && b.Day == day && !contains(absents, b.Student) {
 			index = append(index, b.Student)
 		}
 	}
@@ -291,7 +295,7 @@ func studentFullListByRoom(room string, day string) [][]template.HTML {
 	list := [][]template.HTML{}
 	index := []string{}
 	for _, b := range bookings {
-		if b.ClassRoom == room && b.Day == day {
+		if b.ClassRoom == room && b.Day == day && !contains(absents, b.Student) {
 			index = append(index, b.Student)
 		}
 	}
@@ -330,6 +334,19 @@ func studentFullListByRoom(room string, day string) [][]template.HTML {
 	}
 	return list
 }
+func adminAbsentList() [][]string {
+	list := [][]string{}
+	index := absents
+	sort.Sort(sort.StringSlice(index))
+	for _, s := range index {
+		list = append(list, []string{
+			students[s].User,
+			students[s].Name,
+			students[s].FirstName,
+			students[s].Class})
+	}
+	return list
+}
 func adminStudentList() [][]string {
 	list := [][]string{}
 	index := []string{}
@@ -346,15 +363,22 @@ func adminStudentList() [][]string {
 	}
 	sort.Sort(sort.StringSlice(index))
 	for _, s := range index {
+		absent := ""
+		for _, a := range absents {
+			if a == s {
+				absent = "absent"
+			}
+		}
 		if len(s) == 1 {
-			list = append(list, []string{"index", strings.ToUpper(s), "", "", ""})
+			list = append(list, []string{"index", strings.ToUpper(s), "", "", "", ""})
 		} else {
 			list = append(list, []string{
 				students[s].User,
 				students[s].Name,
 				students[s].FirstName,
 				students[s].Class,
-				students[s].Password})
+				students[s].Password,
+				absent})
 		}
 	}
 	return list
@@ -364,7 +388,9 @@ func studentList(student string) [][]string {
 	index := []string{}
 	fLetter := ""
 	for _, s := range students {
-		index = append(index, s.User)
+		if !contains(absents, s.User) {
+			index = append(index, s.User)
+		}
 	}
 	sort.Sort(sort.StringSlice(index))
 	for _, i := range index {

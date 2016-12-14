@@ -42,6 +42,12 @@
 					</div>
 					<div>
 						<a class="btn btn-default btn-block"
+							href="/admin?tmpl=admin_absents">
+							Gestion des élèves absents
+						</a>
+					</div>
+					<div>
+						<a class="btn btn-default btn-block"
 							href="/admin?tmpl=admin_classes">
 							Gestion des classes 
 						</a>
@@ -62,6 +68,13 @@
 						<a class="btn btn-default btn-block"
 							href="/admin?tmpl=admin_restrictedtime">
 							Gestion des horaires d'indisponibilité
+						</a>
+					</div>
+					<div>
+						<a class="btn btn-default btn-block"
+							onclick="return confirm('Vider toutes les réservations ?')"
+							href="/admin?tmpl=admin&action=resetevents">
+							Remise à zéro des réservations
 						</a>
 					</div>
 				</div>

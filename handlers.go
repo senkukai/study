@@ -25,6 +25,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 		return
 	}
 	tmpl := values["tmpl"][0]
+	fmt.Printf("=> tmpl: %v\n", tmpl)
 	//log out viesco user if it request an unauthorised template
 	if con.Student.User == "viesco" && tmpl != "admin_lists" && tmpl != "admin_view" {
 		http.Redirect(w, r, "/login", http.StatusFound)
@@ -116,6 +117,14 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 	}
 	action, action_ok := values["action"]
 	if action_ok {
+		fmt.Printf("actions: %v\n", action[0])
+		if action[0] == "resetevents" {
+			fmt.Println("Manual reset")
+			resetEvents()
+			loadEvents()
+			remainUpdate()
+			updateDate()
+		}
 		if action[0] == "genpass" {
 			student := students[values["param"][0]]
 			student.Password = genPassword()
@@ -181,10 +190,31 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 			renderTemplate(w, tmpl, con)
 			return
 		}
+		if action[0] == "present" || action[0] == "absent" {
+			comm := &EventCon{
+				Event{
+					Type:    action[0],
+					Date:    time.Now(),
+					Day:     "",
+					Student: values["param"][0],
+					Value:   ""},
+				make(chan error)}
+			c <- comm
+			err := <-comm.Error
+			if err != nil {
+				con.Errors = append(con.Errors, err)
+				renderTemplate(w, "/admin?tmpl="+tmpl, con)
+				return
+			} else {
+				http.Redirect(w, r, "admin?tmpl="+tmpl+"#"+values["param"][0], http.StatusFound)
+				return
+			}
+		}
 		http.Redirect(w, r, "/admin?tmpl="+tmpl, http.StatusFound)
 		return
 	}
 
+	fmt.Printf("Nocatch:%v\n", tmpl)
 	renderTemplate(w, tmpl, con)
 }
 
@@ -302,6 +332,7 @@ func makeHandler(fn func(http.ResponseWriter, *http.Request, *TmplCon)) http.Han
 			&classes,
 			&RemainSeats,
 			&restrictedHours,
+			adminAbsentList(),
 			occupancy(student.User),
 			workList(student.User),
 			[]error{},
