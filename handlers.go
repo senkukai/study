@@ -190,6 +190,34 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 			renderTemplate(w, tmpl, con)
 			return
 		}
+		if action[0] == "flushabsents" {
+			fmt.Printf("->tmpl: %v\n", action[0])
+			flushlist := make([]string, len(absents))
+			copy(flushlist, absents)
+			for _, absent := range flushlist {
+				comm := &EventCon{
+					Event{
+						Type:    "present",
+						Date:    time.Now(),
+						Day:     "",
+						Student: absent,
+						Value:   ""},
+					make(chan error)}
+				c <- comm
+				err := <-comm.Error
+				if err != nil {
+					con.Errors = append(con.Errors, err)
+				}
+			}
+			if len(con.Errors) != 0 {
+				fmt.Printf("Error: %v\n", con.Errors)
+				renderTemplate(w, tmpl, con)
+				return
+			} else {
+				http.Redirect(w, r, "admin?tmpl="+tmpl, http.StatusFound)
+				return
+			}
+		}
 		if action[0] == "present" || action[0] == "absent" {
 			comm := &EventCon{
 				Event{
@@ -203,7 +231,7 @@ func adminHandler(w http.ResponseWriter, r *http.Request, con *TmplCon) {
 			err := <-comm.Error
 			if err != nil {
 				con.Errors = append(con.Errors, err)
-				renderTemplate(w, "/admin?tmpl="+tmpl, con)
+				renderTemplate(w, tmpl, con)
 				return
 			} else {
 				http.Redirect(w, r, "admin?tmpl="+tmpl+"#"+values["param"][0], http.StatusFound)

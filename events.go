@@ -11,7 +11,7 @@ import (
 )
 
 func (e Event) book() error {
-	fmt.Printf("book: %v", e)
+	fmt.Printf("book: %v\n", e)
 	existingEvent := false
 	for i, b := range bookings {
 		if b.Student == e.Student && b.Day == e.Day {
@@ -113,7 +113,7 @@ func eventProcessor() {
 		events = append(events, e.Event)
 		e.Event.log()
 		e.Error <- e.Event.book()
-		fmt.Printf("processor: %v", e)
+		fmt.Printf("processor: %v\n", e)
 	}
 }
 func resetEvents() {

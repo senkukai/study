@@ -60,7 +60,13 @@
 							<th>Nom</th>
 							<th>Prénom</th>
 							<th>Classe</th>
-							<th></th>
+							<th>
+								<a class="btn btn-danger btn-xs" 
+									onclick="return confirm('Supprimer toutes les absences ?')"
+									href="/admin?tmpl=admin_absents&action=flushabsents">
+									<span class="glyphicon glyphicon-trash" id="bigtrash"></span>
+								</a>
+							</th>
 						</tr>
 {{range $s := $absents}}
 						<tr>
