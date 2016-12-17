@@ -127,7 +127,7 @@ var idxClassRooms = []string{}
 var subjects = []string{}
 var classes = []string{}
 var restrictedHours = []RestrictedTime{}
-var resetTime = ResetTime{6, 06, 00}
+var resetTime = ResetTime{6, 00, 00}
 
 /*
 var RemainSeats = map[string]*[5]int{
